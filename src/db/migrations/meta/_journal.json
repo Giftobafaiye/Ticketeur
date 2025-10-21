@@ -8,6 +8,13 @@
       "when": 1756265589576,
       "tag": "0000_tricky_romulus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1761071067219,
+      "tag": "0002_nice_silk_fever",
+      "breakpoints": true
     }
   ]
 }
