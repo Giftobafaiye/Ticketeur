@@ -363,6 +363,20 @@ function getPayloadConfigFromPayload(
   return configLabelKey in config ? config[configLabelKey] : config[key]
 }
 
+// Re-export the recharts primitives apps compose charts from, so chart code
+// imports everything from this one module and shares a single recharts
+// instance with ChartContainer's ResponsiveContainer (mixing two instances
+// would break recharts' internal context between them).
+const LineChart = RechartsPrimitive.LineChart
+const Line = RechartsPrimitive.Line
+const BarChart = RechartsPrimitive.BarChart
+const Bar = RechartsPrimitive.Bar
+const XAxis = RechartsPrimitive.XAxis
+const YAxis = RechartsPrimitive.YAxis
+const CartesianGrid = RechartsPrimitive.CartesianGrid
+const Cell = RechartsPrimitive.Cell
+const LabelList = RechartsPrimitive.LabelList
+
 export {
   ChartContainer,
   ChartTooltip,
@@ -370,4 +384,13 @@ export {
   ChartLegend,
   ChartLegendContent,
   ChartStyle,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Cell,
+  LabelList,
 }

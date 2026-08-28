@@ -7,10 +7,12 @@ import {
   eventVendors,
   ticketTiers,
   user,
+  vendorProfileViews,
   vendorReviews,
 } from '@ticketur/db'
 
 import { createTRPCRouter, publicProcedure } from '../../trpc'
+import { newId } from '../../lib/ids'
 import {
   alreadyEnded,
   notCurrentlyBanned,
@@ -281,6 +283,28 @@ export const publicVendorsRouter = createTRPCRouter({
         // recompute timezone-sensitive comparisons.
         today,
       }
+    }),
+
+  // Records a profile view for the vendor Analytics screens. The public detail
+  // page calls this once per browser session per vendor (see
+  // vendor-detail-content). Best-effort: a vendor viewing their own profile is
+  // skipped, and any write failure is swallowed so a page view never breaks
+  // over a non-critical analytics insert.
+  recordView: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const viewerId = ctx.session?.user.id ?? null
+      if (viewerId && viewerId === input.id) return { ok: true }
+      try {
+        await ctx.db.insert(vendorProfileViews).values({
+          id: newId('pv'),
+          vendorId: input.id,
+          viewerId,
+        })
+      } catch {
+        // Non-critical — intentionally ignored.
+      }
+      return { ok: true }
     }),
 })
 

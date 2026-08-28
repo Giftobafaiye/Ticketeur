@@ -30,5 +30,9 @@ export type {
   ReportStatus,
 } from './events'
 export { vendorReviews, vendorReviewsRelations } from './reviews'
+export {
+  vendorProfileViews,
+  vendorProfileViewsRelations,
+} from './analytics'
 export { vouchers, vouchersRelations } from './vouchers'
 export type { VoucherDiscountType } from './vouchers'

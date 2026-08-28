@@ -34,6 +34,7 @@ export function VendorStatCard({
   pill,
   pillTone: pTone,
   progress,
+  delta,
   href,
 }: {
   label: string
@@ -43,6 +44,8 @@ export function VendorStatCard({
   pill?: string
   pillTone?: VendorStatTone
   progress?: number
+  /** Period-over-period change, rendered as "+X% vs last period" when set. */
+  delta?: number
   /** When set, the whole card becomes a link to this route. */
   href?: string
 }) {
@@ -86,6 +89,22 @@ export function VendorStatCard({
               style={{ width: `${Math.min(100, progress)}%` }}
             />
           </div>
+        ) : null}
+        {typeof delta === 'number' ? (
+          <p className="mt-0.5 text-[11px] font-medium md:text-xs">
+            <span
+              className={cn(
+                'font-bold',
+                delta >= 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-red-600 dark:text-red-400'
+              )}
+            >
+              {delta >= 0 ? '+' : ''}
+              {delta}%
+            </span>{' '}
+            <span className="text-muted-foreground">vs last period</span>
+          </p>
         ) : null}
       </div>
     </>

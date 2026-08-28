@@ -1,7 +1,8 @@
 'use client'
 
+import { useEffect } from 'react'
 import { notFound } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { useTRPC } from '@/lib/trpc'
 import type { VendorRecord } from '@/lib/vendors'
@@ -46,6 +47,27 @@ export function VendorDetailContent({ id }: { id: string }) {
   const { data, isLoading } = useQuery(
     trpc.public.vendors.byId.queryOptions({ id })
   )
+
+  const recordView = useMutation(
+    trpc.public.vendors.recordView.mutationOptions()
+  )
+
+  // Count one profile view per browser session per vendor. Runs once the
+  // vendor has loaded; the sessionStorage guard stops refreshes and query
+  // refetches from re-counting the same visit.
+  const vendorId = data?.id
+  useEffect(() => {
+    if (!vendorId) return
+    const key = `vendor-view:${vendorId}`
+    try {
+      if (sessionStorage.getItem(key)) return
+      sessionStorage.setItem(key, '1')
+    } catch {
+      // sessionStorage unavailable — fall through and record without dedupe.
+    }
+    recordView.mutate({ id: vendorId })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendorId])
 
   if (isLoading) {
     return (

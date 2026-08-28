@@ -9,6 +9,7 @@ import type { IconSvgElement } from '@hugeicons/react'
 import {
   DashboardSquare02Icon,
   Calendar03Icon,
+  Analytics01Icon,
   Logout02Icon,
   Tag01Icon,
 } from '@hugeicons/core-free-icons'
@@ -63,6 +64,7 @@ export const VENDOR_SIDEBAR_CONFIG: SidebarConfig = {
       icon: DashboardSquare02Icon,
     },
     { href: '/vendor/events', label: 'Events', icon: Calendar03Icon },
+    { href: '/vendor/analytics', label: 'Analytics', icon: Analytics01Icon },
   ],
   profileHref: '/vendor/profile',
   profileLabel: 'Profile',
