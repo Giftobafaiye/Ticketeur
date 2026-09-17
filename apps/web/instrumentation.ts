@@ -1,24 +1,9 @@
-import { registerOTel } from '@vercel/otel'
-import type { Instrumentation } from 'next'
+import { registerOTelForAxiom } from '@ticketur/observability/otel'
 
 export function register() {
-  registerOTel({ serviceName: 'ticketeur-web' })
+  registerOTelForAxiom('ticketeur-web')
 }
 
-export const onRequestError: Instrumentation.onRequestError = (
-  err,
-  request,
-  context
-) => {
-  // Surface server-side errors to the platform logs with enough context to
-  // trace back to the originating route. Plug a remote sink (Sentry, Axiom)
-  // in here later if needed.
-  console.error('[web] request error', {
-    digest: (err as { digest?: string }).digest,
-    message: err instanceof Error ? err.message : String(err),
-    path: request.path,
-    method: request.method,
-    routePath: context.routePath,
-    routeType: context.routeType,
-  })
-}
+// Server-side render/route error capture → Axiom (console in dev / when Axiom
+// is not configured). See @ticketur/observability/server.
+export { onRequestError } from '@ticketur/observability/server'

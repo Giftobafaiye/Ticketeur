@@ -23,7 +23,9 @@ export function createAuth(cookiePrefix: string) {
     database: drizzleAdapter(db, { provider: 'pg' }),
 
     emailVerification: {
-      sendOnSignUp: true,
+      // Signup verification is owned by the emailOTP plugin below
+      // (overrideDefaultEmailVerification + sendVerificationOnSignUp). Setting
+      // sendOnSignUp here too would double up the signup email, so it's left off.
       autoSignInAfterVerification: true,
     },
 

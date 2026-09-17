@@ -1,26 +1,23 @@
 {
-  "name": "@ticketur/auth",
+  "name": "@ticketur/observability",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts",
+    "./otel": "./src/otel.ts",
     "./server": "./src/server.ts",
-    "./client": "./src/client.ts",
-    "./guards": "./src/guards.ts",
-    "./permissions": "./src/permissions.ts"
+    "./client": "./src/client.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ticketur/db": "workspace:*",
+    "@axiomhq/js": "^2.0.0",
+    "@axiomhq/logging": "^0.4.1",
+    "@axiomhq/nextjs": "^0.4.1",
+    "@axiomhq/react": "^0.4.1",
     "@ticketur/env": "workspace:*",
-    "@trigger.dev/sdk": "4.6.3",
-    "better-auth": "^1.7.5",
-    "drizzle-orm": "^0.45.2"
+    "@vercel/otel": "^2.1.3"
   },
   "devDependencies": {
     "@ticketur/typescript-config": "workspace:*",

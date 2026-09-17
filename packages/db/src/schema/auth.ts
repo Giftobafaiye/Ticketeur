@@ -3,7 +3,9 @@ import {
   text,
   timestamp,
   boolean,
+  integer,
   jsonb,
+  index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
 
@@ -119,12 +121,26 @@ export const verification = pgTable('verification', {
 
 // ─── Two-Factor Plugin ─────────────────────────────────────────────────────
 
-export const twoFactor = pgTable('two_factor', {
-  id: text('id').primaryKey(),
-  secret: text('secret').notNull(),
-  backupCodes: text('backup_codes').notNull(),
-  verified: boolean('verified').notNull().default(false),
-  userId: text('user_id')
-    .notNull()
-    .references(() => user.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
-})
+export const twoFactor = pgTable(
+  'two_factor',
+  {
+    id: text('id').primaryKey(),
+    secret: text('secret').notNull(),
+    backupCodes: text('backup_codes').notNull(),
+    verified: boolean('verified').notNull().default(false),
+    // Two-factor lockout (better-auth 1.7+): failed verification attempts are
+    // counted, and past the threshold verification is locked until
+    // `locked_until`. Better Auth writes to both on the failed-attempt path.
+    failedVerificationCount: integer('failed_verification_count')
+      .notNull()
+      .default(0),
+    lockedUntil: timestamp('locked_until'),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  },
+  (t) => [
+    index('two_factor_secret_idx').on(t.secret),
+    index('two_factor_user_idx').on(t.userId),
+  ]
+)
