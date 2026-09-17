@@ -67,13 +67,6 @@ async function main() {
       id: accountId,
       accountId: userId,
       providerId: 'credential',
-      // Better Auth 1.7 matches the credential account on
-      // (providerId, issuer, accountId) — a row with the wrong issuer is
-      // invisible to sign-in. This is the literal value of
-      // createLocalAccountIssuer('credential') from @better-auth/core/db,
-      // which is not re-exported from `better-auth` itself; migration 0015
-      // backfills the same string.
-      issuer: 'local:credential',
       userId,
       password: hashed,
       createdAt: now,

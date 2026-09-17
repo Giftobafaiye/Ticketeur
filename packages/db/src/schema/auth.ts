@@ -6,7 +6,6 @@ import {
   integer,
   jsonb,
   index,
-  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 
 // ─── Core Better Auth Tables ───────────────────────────────────────────────
@@ -79,36 +78,23 @@ export const session = pgTable('session', {
   impersonatedBy: text('impersonated_by'),
 })
 
-export const account = pgTable(
-  'account',
-  {
-    id: text('id').primaryKey(),
-    accountId: text('account_id').notNull(),
-    // Identifies the authority that issued this identity. Better Auth 1.7 keys
-    // credential lookups on (providerId, issuer, accountId) — a local password
-    // account is `local:credential`, an OAuth one is the provider's own issuer
-    // (or `local:oauth:<provider>` when it has none). Sign-in silently fails to
-    // find the account if this doesn't match, so it must stay in sync with
-    // better-auth's createLocalAccountIssuer/createOAuthAccountIssuer.
-    issuer: text('issuer').notNull(),
-    providerId: text('provider_id').notNull(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
-    accessToken: text('access_token'),
-    refreshToken: text('refresh_token'),
-    idToken: text('id_token'),
-    accessTokenExpiresAt: timestamp('access_token_expires_at'),
-    refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
-    scope: text('scope'),
-    password: text('password'),
-    createdAt: timestamp('created_at').notNull(),
-    updatedAt: timestamp('updated_at').notNull(),
-  },
-  (t) => [
-    uniqueIndex('account_issuer_account_id_unique').on(t.issuer, t.accountId),
-  ]
-)
+export const account = pgTable('account', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at'),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull(),
+})
 
 export const verification = pgTable('verification', {
   id: text('id').primaryKey(),
