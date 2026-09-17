@@ -24,6 +24,11 @@ type ChargeCompletedEvent = {
 export async function POST(req: Request) {
   const signature = req.headers.get('verif-hash')
   if (!isWebhookSignatureValid(signature)) {
+    // A spike here is either a secret mismatch between us and Flutterwave or
+    // forged "charge.completed" payloads; neither was visible before.
+    console.error('[webhook] flutterwave signature rejected', {
+      reason: signature ? 'hash mismatch' : 'missing verif-hash header',
+    })
     return NextResponse.json({ ok: false }, { status: 401 })
   }
 
@@ -31,6 +36,7 @@ export async function POST(req: Request) {
   try {
     body = (await req.json()) as ChargeCompletedEvent
   } catch {
+    console.error('[webhook] flutterwave payload is not valid json')
     return NextResponse.json(
       { ok: false, error: 'invalid json' },
       { status: 400 }
@@ -47,16 +53,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, ignored: true })
   }
 
+  const flwTransactionId = body.data.id
+  const txRef = body.data.tx_ref
+
   // Always re-verify with FW's API before mutating state — webhook bodies
   // alone are not authoritative. This guards against spoofed payloads.
-  const tx = await verifyTransaction(body.data.id)
+  const tx = await verifyTransaction(flwTransactionId)
   if (!tx || tx.status !== 'successful') {
+    console.error('[webhook] flutterwave charge could not be verified', {
+      flwTransactionId,
+      txRef,
+      verifiedStatus: tx?.status ?? null,
+    })
     return NextResponse.json(
       { ok: false, reason: 'verify failed' },
       { status: 400 }
     )
   }
-  if (tx.tx_ref !== body.data.tx_ref) {
+  if (tx.tx_ref !== txRef) {
+    console.error('[webhook] flutterwave tx_ref mismatch', {
+      flwTransactionId,
+      bodyTxRef: txRef,
+      verifiedTxRef: tx.tx_ref,
+    })
     return NextResponse.json(
       { ok: false, reason: 'tx_ref mismatch' },
       { status: 400 }
@@ -70,6 +89,14 @@ export async function POST(req: Request) {
     .where(eq(orders.flwTxRef, tx.tx_ref))
     .limit(1)
   if (!order) {
+    // A successful charge we cannot attach to an order: money taken with no
+    // tickets to show for it. Needs manual reconciliation, so it must be seen.
+    console.error('[webhook] no order matches a verified flutterwave charge', {
+      flwTransactionId,
+      txRef: tx.tx_ref,
+      amount: tx.amount,
+      currency: tx.currency,
+    })
     return NextResponse.json(
       { ok: false, reason: 'no matching order' },
       { status: 404 }
@@ -82,6 +109,11 @@ export async function POST(req: Request) {
       flwTransactionId: String(tx.id),
     })
     if (!result) {
+      console.error('[webhook] verified charge maps to a missing order row', {
+        orderId: order.id,
+        flwTransactionId: String(tx.id),
+        txRef: tx.tx_ref,
+      })
       return NextResponse.json(
         { ok: false, reason: 'order missing' },
         { status: 404 }
@@ -100,7 +132,14 @@ export async function POST(req: Request) {
       alreadyFulfilled: !result.justFulfilled,
     })
   } catch (err) {
-    console.error('webhook fulfillment failed', err)
+    // Previously logged without any way to tell which order failed, so a
+    // failed fulfillment could not be traced back to the payment.
+    console.error('[webhook] flutterwave fulfillment failed', {
+      orderId: order.id,
+      flwTransactionId: String(tx.id),
+      txRef: tx.tx_ref,
+      error: err,
+    })
     return NextResponse.json(
       { ok: false, error: (err as Error).message },
       { status: 500 }

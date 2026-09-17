@@ -286,10 +286,25 @@ export async function notifyOrderFulfilled({
   baseUrl: string
 }) {
   const head = await loadOrderById(orderId)
-  if (!head) return
+  if (!head) {
+    // Fulfillment reached the notifier but the order row is gone — the buyer
+    // has paid and there is nothing to email tickets from.
+    console.error('[orders] cannot notify a fulfilled order with no row', {
+      orderId,
+    })
+    return
+  }
 
   const ticketRows = await loadTicketsForOrder(orderId)
-  if (ticketRows.length === 0) return
+  if (ticketRows.length === 0) {
+    // Order is paid but no tickets were minted. The buyer is charged and will
+    // never receive tickets; previously this returned silently.
+    console.error('[orders] paid order has no tickets to deliver', {
+      orderId,
+      eventId: head.order.eventId,
+    })
+    return
+  }
 
   // Group tickets by recipient (email = identity). A "for myself" order
   // collapses to a single group: the buyer.
@@ -331,7 +346,14 @@ export async function notifyOrderFulfilled({
         recipientEmail: isGroup ? r.email : undefined,
       })
     } catch (err) {
-      console.error('PDF generation failed', err)
+      // Which recipient's PDF failed was unrecoverable before; the buyer still
+      // gets the email, so this is the only trace of a missing attachment.
+      console.error('[orders] ticket PDF generation failed', {
+        orderId,
+        eventId: head.event.id,
+        recipientCount: recipients.size,
+        error: err,
+      })
     }
 
     const items = [...r.tiers.entries()].map(([tierName, quantity]) => ({
