@@ -153,9 +153,13 @@ export function EditEventContent({ id }: { id: string }) {
       : 'Save Changes'
 
   return (
-    <div className="flex flex-col gap-5">
+    // min-h-0 + flex-1 keep the flex-height chain intact so the form's own
+    // `overflow-y-auto` region (FormView) actually scrolls inside the dashboard
+    // shell (whose <main> is overflow-hidden). Without this the tall edit form
+    // overflows and gets clipped — you can't scroll to the fields below.
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
       {isLive ? (
-        <div className="border-primary/25 bg-primary/5 text-foreground/90 rounded-xl border px-4 py-3 text-sm">
+        <div className="border-primary/25 bg-primary/5 text-foreground/90 shrink-0 rounded-xl border px-4 py-3 text-sm">
           {pending
             ? 'You have changes awaiting admin approval. Your event stays live with its current details — editing here updates what’s pending.'
             : 'This event is live. Changes you submit go to an admin for approval before they appear on the website; the current version stays up until then.'}
