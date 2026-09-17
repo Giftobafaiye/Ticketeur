@@ -21,6 +21,7 @@
     "@ticketur/auth": "workspace:*",
     "@ticketur/db": "workspace:*",
     "@ticketur/env": "workspace:*",
+    "@ticketur/observability": "workspace:*",
     "@ticketur/ui": "workspace:*",
     "@trpc/server": "^11.18.0",
     "@vercel/otel": "^2.1.3",

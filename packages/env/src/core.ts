@@ -21,6 +21,11 @@ export const env = createEnv({
     FLW_PUBLIC_KEY: z.string().optional(),
     FLW_SECRET_KEY: z.string().optional(),
     FLW_SECRET_HASH: z.string().optional(),
+    // Axiom observability (OpenTelemetry traces + structured logs). Optional
+    // so local dev and CI builds without Axiom configured are a graceful no-op.
+    AXIOM_TOKEN: z.string().optional(),
+    AXIOM_DATASET: z.string().optional(),
+    AXIOM_HOST: z.string().default('api.axiom.co'),
     NODE_ENV: z
       .enum(['development', 'production', 'test'])
       .default('development'),
