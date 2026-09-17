@@ -32,6 +32,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Build configs run at build time in the deploy container (PostCSS is
+      # loaded by Next.js/Vercel), which holds the projects production env.
+      # Fail if any config gains module-scope code execution or network/
+      # process primitives — the shape injected into this repo before.
+      - name: Scan build configs for injected code
+        run: pnpm check:configs
+
       # Typecheck needs no runtime config — it never executes module-scope code.
       # The two Next apps generate their route types first (see each app's
       # `typecheck` script), which is what makes `PageProps`/`LayoutProps` resolve.
