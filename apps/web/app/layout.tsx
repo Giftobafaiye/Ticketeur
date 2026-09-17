@@ -4,6 +4,7 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { DefaultProvider } from '@ticketur/ui/providers/default-provider'
 import { transformaSans, trap } from '@ticketur/ui/fonts'
 import { cn } from '@ticketur/ui/lib/utils'
+import { WebVitals } from '@ticketur/observability/client'
 
 export const metadata: Metadata = {
   title: {
@@ -31,6 +32,7 @@ export default function RootLayout({
           trap.variable
         )}
       >
+        <WebVitals />
         <NuqsAdapter>
           <DefaultProvider
             useLens={false}

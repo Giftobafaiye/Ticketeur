@@ -1,8 +1,6 @@
-// Runs after the HTML loads but before React hydrates. Keep it under
-// ~16ms — Next.js will warn in dev if init is slower than that.
-//
-// Hook a real provider (Sentry, Axiom, Datadog RUM) into `report*` calls
-// later without restructuring this file.
+// Runs after the HTML loads but before React hydrates. Keep it fast — Next.js
+// warns in dev if init is slower than ~16ms.
+import { reportClientError } from '@ticketur/observability/client'
 
 try {
   performance.mark('app-init')
@@ -28,12 +26,4 @@ export function onRouterTransitionStart(
   } catch {
     // ignore
   }
-}
-
-function reportClientError(
-  error: unknown,
-  source: 'error' | 'unhandledrejection'
-) {
-  // Replace with a remote sink when one is wired up.
-  console.error(`[web] client ${source}`, error)
 }

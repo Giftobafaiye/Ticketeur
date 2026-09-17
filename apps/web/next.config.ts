@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   experimental: {
     appNewScrollHandler: true,
   },
-  transpilePackages: ['@ticketur/ui'],
+  transpilePackages: ['@ticketur/ui', '@ticketur/observability'],
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },

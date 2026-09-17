@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@ticketur/ui'],
+  transpilePackages: ['@ticketur/ui', '@ticketur/observability'],
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
