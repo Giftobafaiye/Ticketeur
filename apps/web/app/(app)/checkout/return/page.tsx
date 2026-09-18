@@ -63,7 +63,16 @@ export default async function CheckoutReturnPage({
     .from(orders)
     .where(eq(orders.flwTxRef, txRef))
     .limit(1)
-  if (!order) return <FailedScreen reason="missing" />
+  if (!order) {
+    // The buyer returned holding a Flutterwave tx_ref we have no order for —
+    // the same "paid with nothing attached" case the webhook guards. Log it so
+    // it is not inferred solely from a user complaint.
+    console.error('[checkout] return page: no order for payment tx_ref', {
+      txRef,
+      transactionId: transactionId ?? null,
+    })
+    return <FailedScreen reason="missing" />
+  }
 
   // Belt-and-braces: the webhook should have already fulfilled this order, but
   // if the user beat it back we re-verify and fulfill here. Idempotent — only
@@ -79,7 +88,15 @@ export default async function CheckoutReturnPage({
         if (result?.justFulfilled) {
           await notifyOrderFulfilled({ orderId: order.id, baseUrl: getBaseUrl() })
         }
-      } catch {
+      } catch (err) {
+        // The webhook still retries this order, but a buyer parked on the
+        // processing screen needs a cause we can look up.
+        console.error('[checkout] return-page fulfillment failed', {
+          orderId: order.id,
+          txRef,
+          flwTransactionId: String(tx.id),
+          error: err,
+        })
         // fall through — show the processing screen
       }
     }
