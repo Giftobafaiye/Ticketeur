@@ -174,10 +174,16 @@ export async function fulfillOrder({
   justFulfilled: boolean
 } | null> {
   return db.transaction(async (tx) => {
+    // Lock the order row for the rest of this transaction so two concurrent
+    // fulfillers (the FW webhook and the /checkout/return page) can't both
+    // read status='pending' and both mint tickets. At READ COMMITTED the loser
+    // blocks here until the winner commits, then re-reads the row and sees
+    // status='paid', so it takes the already-fulfilled no-op branch below.
     const [order] = await tx
       .select()
       .from(orders)
       .where(eq(orders.id, orderId))
+      .for('update')
       .limit(1)
     if (!order) return null
 
