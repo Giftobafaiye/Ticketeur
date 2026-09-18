@@ -11,7 +11,14 @@ const nextConfig: NextConfig = {
     ],
   },
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    // Keep error/warn diagnostics in production. `true` stripped every
+    // console.* call, including the apps own console.error reports (e.g.
+    // "webhook fulfillment failed", "PDF generation failed"), so a
+    // production deploy with no Axiom token emitted nothing anywhere.
+    removeConsole:
+      process.env.NODE_ENV === 'production'
+        ? { exclude: ['error', 'warn'] }
+        : false,
   },
   typescript: {
     ignoreBuildErrors: false,
