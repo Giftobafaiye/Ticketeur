@@ -2,13 +2,29 @@ import 'dotenv/config'
 import { z } from 'zod'
 import { createEnv } from '@t3-oss/env-core'
 
+// Shared server env for every Node-side consumer: @ticketur/db, @ticketur/auth,
+// @ticketur/api, @ticketur/observability, the two Next.js apps that pull those
+// in, and the Trigger.dev worker in @ticketur/jobs (which reaches this module
+// through @ticketur/db and src/utils/resend.ts).
+//
+// Because one module serves all of them, only a variable that *every* one of
+// those environments provisions can be declared required: a required variable
+// that a single environment lacks makes this module throw on import in that
+// environment. Each package's .env.example documents the set it ships with.
 export const env = createEnv({
   server: {
+    // Required in every environment that loads this module.
     DATABASE_URL: z.string().min(1),
-    BETTER_AUTH_SECRET: z.string().min(32),
-    BETTER_AUTH_URL: z.url(),
-    BETTER_AUTH_API_KEY: z.string().min(1),
-    APP_URLS: z.string().default('http://localhost:3000'),
+    // Better Auth is configured by the two Next.js apps only; the Trigger.dev
+    // worker does not provision these (see packages/jobs/.env.example). They
+    // are still shape-checked whenever they are set.
+    BETTER_AUTH_SECRET: z.string().min(32).optional(),
+    BETTER_AUTH_URL: z.url().optional(),
+    BETTER_AUTH_API_KEY: z.string().optional(),
+    APP_URLS: z
+      .string()
+      .default('http://localhost:3000')
+      .transform((val) => val.split(',').map((url) => url.trim())),
     GOOGLE_CLIENT_ID: z.string().optional().default(''),
     GOOGLE_CLIENT_SECRET: z.string().optional().default(''),
     RESEND_API_KEY: z.string().min(1),
@@ -29,17 +45,4 @@ export const env = createEnv({
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
-  skipValidation: true,
 })
-
-// `skipValidation: true` makes createEnv return the raw runtimeEnv before the
-// schema is parsed, so the `.default()` and `.transform()` above never run in
-// this repo. Declare APP_URLS as the plain comma-separated string the runtime
-// actually holds, and split it here so consumers never spread the raw string
-// into an array of single characters.
-export function getAppUrls(): string[] {
-  return (env.APP_URLS ?? 'http://localhost:3000')
-    .split(',')
-    .map((url) => url.trim())
-    .filter(Boolean)
-}
