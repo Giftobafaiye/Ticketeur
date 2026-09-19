@@ -115,7 +115,11 @@ export function createAuth(cookiePrefix: string) {
     advanced: {
       cookiePrefix,
     },
-    trustedOrigins: [...(env.APP_URLS ?? []), env.BETTER_AUTH_URL],
+    // env.BETTER_AUTH_URL is optional in @ticketur/env/core (the Trigger.dev
+    // worker loads that module without it), so drop it when it is unset.
+    trustedOrigins: [...(env.APP_URLS ?? []), env.BETTER_AUTH_URL].filter(
+      (origin): origin is string => origin !== undefined
+    ),
   })
 }
 

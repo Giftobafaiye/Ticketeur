@@ -2,12 +2,25 @@ import 'dotenv/config'
 import { z } from 'zod'
 import { createEnv } from '@t3-oss/env-core'
 
+// Shared server env for every Node-side consumer: @ticketur/db, @ticketur/auth,
+// @ticketur/api, @ticketur/observability, the two Next.js apps that pull those
+// in, and the Trigger.dev worker in @ticketur/jobs (which reaches this module
+// through @ticketur/db and src/utils/resend.ts).
+//
+// Because one module serves all of them, only a variable that *every* one of
+// those environments provisions can be declared required: a required variable
+// that a single environment lacks makes this module throw on import in that
+// environment. Each package's .env.example documents the set it ships with.
 export const env = createEnv({
   server: {
+    // Required in every environment that loads this module.
     DATABASE_URL: z.string().min(1),
-    BETTER_AUTH_SECRET: z.string().min(32),
-    BETTER_AUTH_URL: z.url(),
-    BETTER_AUTH_API_KEY: z.string().min(1),
+    // Better Auth is configured by the two Next.js apps only; the Trigger.dev
+    // worker does not provision these (see packages/jobs/.env.example). They
+    // are still shape-checked whenever they are set.
+    BETTER_AUTH_SECRET: z.string().min(32).optional(),
+    BETTER_AUTH_URL: z.url().optional(),
+    BETTER_AUTH_API_KEY: z.string().optional(),
     APP_URLS: z
       .string()
       .default('http://localhost:3000')
@@ -32,5 +45,4 @@ export const env = createEnv({
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
-  skipValidation: true,
 })
