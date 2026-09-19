@@ -1,0 +1,6 @@
+import { frameworkIdentifierFormatter } from "./identifier.js";
+const nextJsFormatters = [frameworkIdentifierFormatter];
+export {
+  nextJsFormatters
+};
+//# sourceMappingURL=formatters.client.js.map

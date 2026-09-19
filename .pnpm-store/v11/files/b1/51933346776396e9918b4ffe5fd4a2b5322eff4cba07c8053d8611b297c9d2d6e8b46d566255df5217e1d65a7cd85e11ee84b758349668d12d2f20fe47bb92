@@ -1,0 +1,1 @@
+{"version":3,"file":"formatters.js","sources":["../../src/formatters.ts"],"sourcesContent":["import { serverContextFieldsFormatter } from 'src/context';\nimport { frameworkIdentifierFormatter } from 'src/identifier';\n\nexport const nextJsFormatters = [frameworkIdentifierFormatter, serverContextFieldsFormatter];\n"],"names":[],"mappings":";;AAGO,MAAM,mBAAmB,CAAC,8BAA8B,4BAA4B;"}

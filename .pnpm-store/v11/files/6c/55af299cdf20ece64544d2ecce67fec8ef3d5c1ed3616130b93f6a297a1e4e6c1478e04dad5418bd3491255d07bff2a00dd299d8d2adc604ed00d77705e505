@@ -1,0 +1,11 @@
+const Version = "0.4.1";
+const isWebWorker = typeof self !== "undefined" && typeof globalThis.WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+const isBrowser = typeof window !== "undefined" || isWebWorker;
+const isEdgeRuntime = globalThis.EdgeRuntime ? true : false;
+export {
+  Version,
+  isBrowser,
+  isEdgeRuntime,
+  isWebWorker
+};
+//# sourceMappingURL=runtime.js.map

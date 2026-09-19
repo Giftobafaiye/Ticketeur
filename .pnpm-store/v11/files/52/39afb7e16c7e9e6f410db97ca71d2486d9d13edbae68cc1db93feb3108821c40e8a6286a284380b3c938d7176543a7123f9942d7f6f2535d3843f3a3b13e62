@@ -1,0 +1,8 @@
+import { Formatter, LogEvent, Logger } from '@axiomhq/logging';
+export declare const frameworkIdentifier: {
+    name: "next-axiom-version";
+    version: string;
+};
+export declare const axiomClient: string;
+export declare const appendNextJsAxiomClient: (logger: Logger) => void;
+export declare const frameworkIdentifierFormatter: Formatter<LogEvent, LogEvent>;

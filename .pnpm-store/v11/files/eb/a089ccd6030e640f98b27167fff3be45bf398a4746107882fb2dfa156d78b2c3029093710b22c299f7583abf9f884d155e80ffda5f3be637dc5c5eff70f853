@@ -1,0 +1,799 @@
+import { z } from "zod";
+export declare const listPromptsTool: {
+    name: string;
+    title: string;
+    description: string;
+    inputSchema: {
+        projectRef: z.ZodOptional<z.ZodString>;
+        configPath: z.ZodOptional<z.ZodString>;
+        environment: z.ZodDefault<z.ZodEnum<{
+            dev: "dev";
+            preview: "preview";
+            prod: "prod";
+            staging: "staging";
+        }>>;
+        branch: z.ZodOptional<z.ZodString>;
+    };
+    handler: (input: unknown, extra: import("../types.js").ToolMeta) => Promise<{
+        [x: string]: unknown;
+        _meta?: {
+            [x: string]: unknown;
+            progressToken?: string | number | undefined;
+            "io.modelcontextprotocol/related-task"?: {
+                taskId: string;
+            } | undefined;
+        } | undefined;
+        content: ({
+            type: "text";
+            text: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "image";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "audio";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            uri: string;
+            description?: string | undefined;
+            mimeType?: string | undefined;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+            icons?: {
+                src: string;
+                mimeType?: string | undefined;
+                sizes?: string[] | undefined;
+                theme?: "dark" | "light" | undefined;
+            }[] | undefined;
+            name: string;
+            title?: string | undefined;
+            type: "resource_link";
+        } | {
+            type: "resource";
+            resource: {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                text: string;
+            } | {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                blob: string;
+            };
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        })[];
+        structuredContent?: {
+            [x: string]: unknown;
+        } | undefined;
+        isError?: boolean | undefined;
+    }>;
+};
+export declare const getPromptVersionsTool: {
+    name: string;
+    title: string;
+    description: string;
+    inputSchema: {
+        projectRef: z.ZodOptional<z.ZodString>;
+        configPath: z.ZodOptional<z.ZodString>;
+        environment: z.ZodDefault<z.ZodEnum<{
+            dev: "dev";
+            preview: "preview";
+            prod: "prod";
+            staging: "staging";
+        }>>;
+        branch: z.ZodOptional<z.ZodString>;
+        slug: z.ZodString;
+    };
+    handler: (input: unknown, extra: import("../types.js").ToolMeta) => Promise<{
+        [x: string]: unknown;
+        _meta?: {
+            [x: string]: unknown;
+            progressToken?: string | number | undefined;
+            "io.modelcontextprotocol/related-task"?: {
+                taskId: string;
+            } | undefined;
+        } | undefined;
+        content: ({
+            type: "text";
+            text: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "image";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "audio";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            uri: string;
+            description?: string | undefined;
+            mimeType?: string | undefined;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+            icons?: {
+                src: string;
+                mimeType?: string | undefined;
+                sizes?: string[] | undefined;
+                theme?: "dark" | "light" | undefined;
+            }[] | undefined;
+            name: string;
+            title?: string | undefined;
+            type: "resource_link";
+        } | {
+            type: "resource";
+            resource: {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                text: string;
+            } | {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                blob: string;
+            };
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        })[];
+        structuredContent?: {
+            [x: string]: unknown;
+        } | undefined;
+        isError?: boolean | undefined;
+    }>;
+};
+export declare const promotePromptVersionTool: {
+    name: string;
+    title: string;
+    description: string;
+    inputSchema: {
+        projectRef: z.ZodOptional<z.ZodString>;
+        configPath: z.ZodOptional<z.ZodString>;
+        environment: z.ZodDefault<z.ZodEnum<{
+            dev: "dev";
+            preview: "preview";
+            prod: "prod";
+            staging: "staging";
+        }>>;
+        branch: z.ZodOptional<z.ZodString>;
+        slug: z.ZodString;
+        version: z.ZodCoercedNumber<unknown>;
+    };
+    handler: (input: unknown, extra: import("../types.js").ToolMeta) => Promise<{
+        [x: string]: unknown;
+        _meta?: {
+            [x: string]: unknown;
+            progressToken?: string | number | undefined;
+            "io.modelcontextprotocol/related-task"?: {
+                taskId: string;
+            } | undefined;
+        } | undefined;
+        content: ({
+            type: "text";
+            text: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "image";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "audio";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            uri: string;
+            description?: string | undefined;
+            mimeType?: string | undefined;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+            icons?: {
+                src: string;
+                mimeType?: string | undefined;
+                sizes?: string[] | undefined;
+                theme?: "dark" | "light" | undefined;
+            }[] | undefined;
+            name: string;
+            title?: string | undefined;
+            type: "resource_link";
+        } | {
+            type: "resource";
+            resource: {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                text: string;
+            } | {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                blob: string;
+            };
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        })[];
+        structuredContent?: {
+            [x: string]: unknown;
+        } | undefined;
+        isError?: boolean | undefined;
+    }>;
+};
+export declare const createPromptOverrideTool: {
+    name: string;
+    title: string;
+    description: string;
+    inputSchema: {
+        projectRef: z.ZodOptional<z.ZodString>;
+        configPath: z.ZodOptional<z.ZodString>;
+        environment: z.ZodDefault<z.ZodEnum<{
+            dev: "dev";
+            preview: "preview";
+            prod: "prod";
+            staging: "staging";
+        }>>;
+        branch: z.ZodOptional<z.ZodString>;
+        slug: z.ZodString;
+        textContent: z.ZodString;
+        model: z.ZodOptional<z.ZodString>;
+        commitMessage: z.ZodOptional<z.ZodString>;
+    };
+    handler: (input: unknown, extra: import("../types.js").ToolMeta) => Promise<{
+        [x: string]: unknown;
+        _meta?: {
+            [x: string]: unknown;
+            progressToken?: string | number | undefined;
+            "io.modelcontextprotocol/related-task"?: {
+                taskId: string;
+            } | undefined;
+        } | undefined;
+        content: ({
+            type: "text";
+            text: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "image";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "audio";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            uri: string;
+            description?: string | undefined;
+            mimeType?: string | undefined;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+            icons?: {
+                src: string;
+                mimeType?: string | undefined;
+                sizes?: string[] | undefined;
+                theme?: "dark" | "light" | undefined;
+            }[] | undefined;
+            name: string;
+            title?: string | undefined;
+            type: "resource_link";
+        } | {
+            type: "resource";
+            resource: {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                text: string;
+            } | {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                blob: string;
+            };
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        })[];
+        structuredContent?: {
+            [x: string]: unknown;
+        } | undefined;
+        isError?: boolean | undefined;
+    }>;
+};
+export declare const updatePromptOverrideTool: {
+    name: string;
+    title: string;
+    description: string;
+    inputSchema: {
+        projectRef: z.ZodOptional<z.ZodString>;
+        configPath: z.ZodOptional<z.ZodString>;
+        environment: z.ZodDefault<z.ZodEnum<{
+            dev: "dev";
+            preview: "preview";
+            prod: "prod";
+            staging: "staging";
+        }>>;
+        branch: z.ZodOptional<z.ZodString>;
+        slug: z.ZodString;
+        textContent: z.ZodOptional<z.ZodString>;
+        model: z.ZodOptional<z.ZodString>;
+        commitMessage: z.ZodOptional<z.ZodString>;
+    };
+    handler: (input: unknown, extra: import("../types.js").ToolMeta) => Promise<{
+        [x: string]: unknown;
+        _meta?: {
+            [x: string]: unknown;
+            progressToken?: string | number | undefined;
+            "io.modelcontextprotocol/related-task"?: {
+                taskId: string;
+            } | undefined;
+        } | undefined;
+        content: ({
+            type: "text";
+            text: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "image";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "audio";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            uri: string;
+            description?: string | undefined;
+            mimeType?: string | undefined;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+            icons?: {
+                src: string;
+                mimeType?: string | undefined;
+                sizes?: string[] | undefined;
+                theme?: "dark" | "light" | undefined;
+            }[] | undefined;
+            name: string;
+            title?: string | undefined;
+            type: "resource_link";
+        } | {
+            type: "resource";
+            resource: {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                text: string;
+            } | {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                blob: string;
+            };
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        })[];
+        structuredContent?: {
+            [x: string]: unknown;
+        } | undefined;
+        isError?: boolean | undefined;
+    }>;
+};
+export declare const removePromptOverrideTool: {
+    name: string;
+    title: string;
+    description: string;
+    inputSchema: {
+        projectRef: z.ZodOptional<z.ZodString>;
+        configPath: z.ZodOptional<z.ZodString>;
+        environment: z.ZodDefault<z.ZodEnum<{
+            dev: "dev";
+            preview: "preview";
+            prod: "prod";
+            staging: "staging";
+        }>>;
+        branch: z.ZodOptional<z.ZodString>;
+        slug: z.ZodString;
+    };
+    handler: (input: unknown, extra: import("../types.js").ToolMeta) => Promise<{
+        [x: string]: unknown;
+        _meta?: {
+            [x: string]: unknown;
+            progressToken?: string | number | undefined;
+            "io.modelcontextprotocol/related-task"?: {
+                taskId: string;
+            } | undefined;
+        } | undefined;
+        content: ({
+            type: "text";
+            text: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "image";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "audio";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            uri: string;
+            description?: string | undefined;
+            mimeType?: string | undefined;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+            icons?: {
+                src: string;
+                mimeType?: string | undefined;
+                sizes?: string[] | undefined;
+                theme?: "dark" | "light" | undefined;
+            }[] | undefined;
+            name: string;
+            title?: string | undefined;
+            type: "resource_link";
+        } | {
+            type: "resource";
+            resource: {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                text: string;
+            } | {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                blob: string;
+            };
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        })[];
+        structuredContent?: {
+            [x: string]: unknown;
+        } | undefined;
+        isError?: boolean | undefined;
+    }>;
+};
+export declare const reactivatePromptOverrideTool: {
+    name: string;
+    title: string;
+    description: string;
+    inputSchema: {
+        projectRef: z.ZodOptional<z.ZodString>;
+        configPath: z.ZodOptional<z.ZodString>;
+        environment: z.ZodDefault<z.ZodEnum<{
+            dev: "dev";
+            preview: "preview";
+            prod: "prod";
+            staging: "staging";
+        }>>;
+        branch: z.ZodOptional<z.ZodString>;
+        slug: z.ZodString;
+        version: z.ZodCoercedNumber<unknown>;
+    };
+    handler: (input: unknown, extra: import("../types.js").ToolMeta) => Promise<{
+        [x: string]: unknown;
+        _meta?: {
+            [x: string]: unknown;
+            progressToken?: string | number | undefined;
+            "io.modelcontextprotocol/related-task"?: {
+                taskId: string;
+            } | undefined;
+        } | undefined;
+        content: ({
+            type: "text";
+            text: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "image";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            type: "audio";
+            data: string;
+            mimeType: string;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        } | {
+            uri: string;
+            description?: string | undefined;
+            mimeType?: string | undefined;
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+            icons?: {
+                src: string;
+                mimeType?: string | undefined;
+                sizes?: string[] | undefined;
+                theme?: "dark" | "light" | undefined;
+            }[] | undefined;
+            name: string;
+            title?: string | undefined;
+            type: "resource_link";
+        } | {
+            type: "resource";
+            resource: {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                text: string;
+            } | {
+                uri: string;
+                mimeType?: string | undefined;
+                _meta?: {
+                    [x: string]: unknown;
+                } | undefined;
+                blob: string;
+            };
+            annotations?: {
+                audience?: ("assistant" | "user")[] | undefined;
+                priority?: number | undefined;
+                lastModified?: string | undefined;
+            } | undefined;
+            _meta?: {
+                [x: string]: unknown;
+            } | undefined;
+        })[];
+        structuredContent?: {
+            [x: string]: unknown;
+        } | undefined;
+        isError?: boolean | undefined;
+    }>;
+};

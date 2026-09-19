@@ -1,0 +1,74 @@
+{
+  "name": "@axiomhq/logging",
+  "description": "The official logging package for Axiom",
+  "version": "0.4.1",
+  "author": "Axiom, Inc.",
+  "license": "MIT",
+  "contributors": [
+    "Lukas Malkmus <lukas@axiom.co>",
+    "Islam Shehata <islam@axiom.co>",
+    "Arne Bahlo <arne@axiom.co>",
+    "Gabriel De Andrade <gabriel@axiom.co>"
+  ],
+  "type": "module",
+  "main": "dist/cjs/index.cjs",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/axiomhq/axiom-js.git"
+  },
+  "keywords": [
+    "axiom",
+    "api",
+    "rest",
+    "client",
+    "axiom-js",
+    "axiom sdk",
+    "axiom js",
+    "logger",
+    "logging"
+  ],
+  "homepage": "https://github.com/axiomhq/axiom-js/blob/main/packages/logging/README.md",
+  "engines": {
+    "node": ">=20"
+  },
+  "bugs": {
+    "url": "https://github.com/axiomhq/axiom-js/issues"
+  },
+  "devDependencies": {
+    "@tanstack/config": "^0.22.2",
+    "msw": "^2.6.2",
+    "vite": "^7.3.6",
+    "zod": "^4.4.3",
+    "@axiomhq/js": "2.0.0",
+    "@repo/eslint-config": "0.0.0"
+  },
+  "peerDependencies": {
+    "@axiomhq/js": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@axiomhq/js": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "vite build",
+    "format": "eslint . --fix",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --emitDeclarationOnly false --noEmit",
+    "test": "vitest ./test/unit/*"
+  }
+}

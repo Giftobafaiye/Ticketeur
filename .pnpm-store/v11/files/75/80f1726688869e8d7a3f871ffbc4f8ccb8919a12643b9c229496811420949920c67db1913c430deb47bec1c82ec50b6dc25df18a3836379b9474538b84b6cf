@@ -1,0 +1,10 @@
+import { appendNextJsAxiomClient, axiomClient, frameworkIdentifier, frameworkIdentifierFormatter } from "./identifier.js";
+import { nextJsFormatters } from "./formatters.client.js";
+export {
+  appendNextJsAxiomClient,
+  axiomClient,
+  frameworkIdentifier,
+  frameworkIdentifierFormatter,
+  nextJsFormatters
+};
+//# sourceMappingURL=index.client.js.map

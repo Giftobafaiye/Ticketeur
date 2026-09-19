@@ -1,0 +1,396 @@
+import type { BuildRuntime } from "@trigger.dev/core/v3/schemas";
+export type IndexWorkerManifestOptions = {
+    runtime: BuildRuntime;
+    indexWorkerPath: string;
+    buildManifestPath: string;
+    nodeOptions?: string;
+    env: Record<string, string | undefined>;
+    cwd?: string;
+    otelHookInclude?: string[];
+    otelHookExclude?: string[];
+    handleStdout?: (data: string) => void;
+    handleStderr?: (data: string) => void;
+};
+export declare function indexWorkerManifest({ runtime, indexWorkerPath, buildManifestPath, nodeOptions, env: $env, cwd, otelHookInclude, otelHookExclude, handleStderr, handleStdout, }: IndexWorkerManifestOptions): Promise<{
+    configPath: string;
+    tasks: {
+        id: string;
+        description?: string | undefined;
+        queue?: {
+            concurrencyLimit?: number | null | undefined;
+            name?: string | undefined;
+        } | undefined;
+        retry?: {
+            maxAttempts?: number | undefined;
+            factor?: number | undefined;
+            minTimeoutInMs?: number | undefined;
+            maxTimeoutInMs?: number | undefined;
+            randomize?: boolean | undefined;
+            outOfMemory?: {
+                machine?: "large-1x" | "large-2x" | "medium-1x" | "medium-2x" | "micro" | "small-1x" | "small-2x" | undefined;
+            } | undefined;
+        } | undefined;
+        machine?: {
+            cpu?: 0.25 | 0.5 | 1 | 2 | 4 | undefined;
+            memory?: 0.25 | 0.5 | 1 | 2 | 4 | 8 | undefined;
+            preset?: "large-1x" | "large-2x" | "medium-1x" | "medium-2x" | "micro" | "small-1x" | "small-2x" | undefined;
+        } | undefined;
+        triggerSource?: string | undefined;
+        agentConfig?: {
+            type: string;
+        } | undefined;
+        schedule?: {
+            cron: string;
+            timezone: string;
+            environments?: ("DEVELOPMENT" | "PREVIEW" | "PRODUCTION" | "STAGING")[] | undefined;
+            window?: string | undefined;
+        } | undefined;
+        maxDuration?: number | undefined;
+        ttl?: string | number | undefined;
+        payloadSchema?: unknown;
+        filePath: string;
+        exportName?: string | undefined;
+        entryPoint: string;
+    }[];
+    prompts?: {
+        filePath: string;
+        exportName?: string | undefined;
+        entryPoint: string;
+        id: string;
+        description?: string | undefined;
+        content?: string | undefined;
+        model?: string | undefined;
+        config?: Record<string, unknown> | undefined;
+        variableSchema?: unknown;
+    }[] | undefined;
+    skills?: {
+        filePath: string;
+        exportName?: string | undefined;
+        entryPoint: string;
+        id: string;
+        sourcePath: string;
+    }[] | undefined;
+    webhooks?: {
+        filePath: string;
+        exportName?: string | undefined;
+        entryPoint: string;
+        id: string;
+        description?: string | undefined;
+        source: string;
+        verifierArtifact: {
+            kind: "config";
+            config: {
+                scheme: "hmac";
+                algorithm: "sha1" | "sha256";
+                encoding: "base64" | "hex";
+                signatureHeader: string;
+                signature?: {
+                    itemSeparator?: string | undefined;
+                    fieldSeparator?: string | undefined;
+                    field?: string | undefined;
+                    trim?: boolean | undefined;
+                } | undefined;
+                timestamp?: {
+                    source: {
+                        from: "header";
+                        name: string;
+                    } | {
+                        from: "signatureField";
+                        field: string;
+                    } | {
+                        from: "body";
+                        path: string;
+                    } | {
+                        from: "url";
+                    } | {
+                        from: "constant";
+                        value: string;
+                    };
+                    unit?: "milliseconds" | "seconds" | undefined;
+                    toleranceSeconds?: number | undefined;
+                } | undefined;
+                signingString: "raw" | {
+                    template: string;
+                    vars?: Record<string, {
+                        from: "header";
+                        name: string;
+                    } | {
+                        from: "signatureField";
+                        field: string;
+                    } | {
+                        from: "body";
+                        path: string;
+                    } | {
+                        from: "url";
+                    } | {
+                        from: "constant";
+                        value: string;
+                    }> | undefined;
+                };
+                secret?: {
+                    encoding?: "base64" | "utf8" | undefined;
+                    stripPrefix?: string | undefined;
+                } | undefined;
+                idempotencyField?: {
+                    from: "body" | "header";
+                    name: string;
+                } | undefined;
+                formPayload?: {
+                    field: string;
+                } | undefined;
+            } | {
+                scheme: "shared-secret";
+                placement: "basic" | "bearer" | "body" | "header";
+                fieldName?: string | undefined;
+                idempotencyField?: {
+                    from: "body" | "header";
+                    name: string;
+                } | undefined;
+            } | {
+                scheme: "url-secret";
+                placement: "path" | "query";
+                paramName: string;
+                idempotencyField?: {
+                    from: "body" | "header";
+                    name: string;
+                } | undefined;
+            } | {
+                scheme: "asymmetric";
+                algorithm: "ecdsa-p256" | "ed25519" | "rsa-sha256";
+                encoding: "base64" | "hex";
+                signatureHeader: string;
+                signature?: {
+                    itemSeparator?: string | undefined;
+                    fieldSeparator?: string | undefined;
+                    field?: string | undefined;
+                    trim?: boolean | undefined;
+                } | undefined;
+                timestamp?: {
+                    source: {
+                        from: "header";
+                        name: string;
+                    } | {
+                        from: "signatureField";
+                        field: string;
+                    } | {
+                        from: "body";
+                        path: string;
+                    } | {
+                        from: "url";
+                    } | {
+                        from: "constant";
+                        value: string;
+                    };
+                    unit?: "milliseconds" | "seconds" | undefined;
+                    toleranceSeconds?: number | undefined;
+                } | undefined;
+                signingString: "raw" | {
+                    template: string;
+                    vars?: Record<string, {
+                        from: "header";
+                        name: string;
+                    } | {
+                        from: "signatureField";
+                        field: string;
+                    } | {
+                        from: "body";
+                        path: string;
+                    } | {
+                        from: "url";
+                    } | {
+                        from: "constant";
+                        value: string;
+                    }> | undefined;
+                };
+                publicKeyEncoding?: "pem" | "raw-base64" | "raw-hex" | "spki-der-base64" | undefined;
+                idempotencyField?: {
+                    from: "body" | "header";
+                    name: string;
+                } | undefined;
+            };
+            handshake?: {
+                matchPath: string;
+                matchValue: string;
+                respondPath: string;
+            } | undefined;
+        } | {
+            kind: "preset";
+            preset: string;
+            config: {
+                scheme: "hmac";
+                algorithm: "sha1" | "sha256";
+                encoding: "base64" | "hex";
+                signatureHeader: string;
+                signature?: {
+                    itemSeparator?: string | undefined;
+                    fieldSeparator?: string | undefined;
+                    field?: string | undefined;
+                    trim?: boolean | undefined;
+                } | undefined;
+                timestamp?: {
+                    source: {
+                        from: "header";
+                        name: string;
+                    } | {
+                        from: "signatureField";
+                        field: string;
+                    } | {
+                        from: "body";
+                        path: string;
+                    } | {
+                        from: "url";
+                    } | {
+                        from: "constant";
+                        value: string;
+                    };
+                    unit?: "milliseconds" | "seconds" | undefined;
+                    toleranceSeconds?: number | undefined;
+                } | undefined;
+                signingString: "raw" | {
+                    template: string;
+                    vars?: Record<string, {
+                        from: "header";
+                        name: string;
+                    } | {
+                        from: "signatureField";
+                        field: string;
+                    } | {
+                        from: "body";
+                        path: string;
+                    } | {
+                        from: "url";
+                    } | {
+                        from: "constant";
+                        value: string;
+                    }> | undefined;
+                };
+                secret?: {
+                    encoding?: "base64" | "utf8" | undefined;
+                    stripPrefix?: string | undefined;
+                } | undefined;
+                idempotencyField?: {
+                    from: "body" | "header";
+                    name: string;
+                } | undefined;
+                formPayload?: {
+                    field: string;
+                } | undefined;
+            } | {
+                scheme: "shared-secret";
+                placement: "basic" | "bearer" | "body" | "header";
+                fieldName?: string | undefined;
+                idempotencyField?: {
+                    from: "body" | "header";
+                    name: string;
+                } | undefined;
+            } | {
+                scheme: "url-secret";
+                placement: "path" | "query";
+                paramName: string;
+                idempotencyField?: {
+                    from: "body" | "header";
+                    name: string;
+                } | undefined;
+            } | {
+                scheme: "asymmetric";
+                algorithm: "ecdsa-p256" | "ed25519" | "rsa-sha256";
+                encoding: "base64" | "hex";
+                signatureHeader: string;
+                signature?: {
+                    itemSeparator?: string | undefined;
+                    fieldSeparator?: string | undefined;
+                    field?: string | undefined;
+                    trim?: boolean | undefined;
+                } | undefined;
+                timestamp?: {
+                    source: {
+                        from: "header";
+                        name: string;
+                    } | {
+                        from: "signatureField";
+                        field: string;
+                    } | {
+                        from: "body";
+                        path: string;
+                    } | {
+                        from: "url";
+                    } | {
+                        from: "constant";
+                        value: string;
+                    };
+                    unit?: "milliseconds" | "seconds" | undefined;
+                    toleranceSeconds?: number | undefined;
+                } | undefined;
+                signingString: "raw" | {
+                    template: string;
+                    vars?: Record<string, {
+                        from: "header";
+                        name: string;
+                    } | {
+                        from: "signatureField";
+                        field: string;
+                    } | {
+                        from: "body";
+                        path: string;
+                    } | {
+                        from: "url";
+                    } | {
+                        from: "constant";
+                        value: string;
+                    }> | undefined;
+                };
+                publicKeyEncoding?: "pem" | "raw-base64" | "raw-hex" | "spki-der-base64" | undefined;
+                idempotencyField?: {
+                    from: "body" | "header";
+                    name: string;
+                } | undefined;
+            };
+            handshake?: {
+                matchPath: string;
+                matchValue: string;
+                respondPath: string;
+            } | undefined;
+        } | {
+            kind: "bundle";
+            bundleUrl: string;
+            hash: string;
+        };
+        routingTarget: {
+            type: "task";
+            taskId: string;
+        } | {
+            type: "session";
+            taskIdentifier: string;
+            keyTemplate: string;
+            deliverAs: "action" | "message";
+            actionType?: string | undefined;
+            connectorId?: string | undefined;
+            triggerConfigTemplate?: Record<string, unknown> | undefined;
+            startOn?: string | undefined;
+        };
+        secretProvisioning?: "either" | "integrator" | "provider" | undefined;
+        filter?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
+    }[] | undefined;
+    unclaimedSessionWebhooks?: string[] | undefined;
+    queues?: {
+        name: string;
+        concurrencyLimit?: number | null | undefined;
+    }[] | undefined;
+    workerEntryPoint: string;
+    controllerEntryPoint?: string | undefined;
+    loaderEntryPoint?: string | undefined;
+    initEntryPoint?: string | undefined;
+    runtime: "bun" | "node" | "node-22" | "node-24" | "node-26";
+    runtimeVersion?: string | undefined;
+    customConditions?: string[] | undefined;
+    timings?: Record<string, number> | undefined;
+    processKeepAlive?: {
+        enabled: boolean;
+        maxExecutionsPerProcess?: number | undefined;
+    } | undefined;
+    otelImportHook?: {
+        include?: string[] | undefined;
+        exclude?: string[] | undefined;
+    } | undefined;
+}>;

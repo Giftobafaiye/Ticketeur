@@ -1,0 +1,44 @@
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const logging = require("@axiomhq/logging");
+const storage = new globalThis.AsyncLocalStorage();
+const serverContextFieldsFormatter = (logEvent) => {
+  const store = storage.getStore();
+  if (!store) {
+    return logEvent;
+  }
+  if (store instanceof Map) {
+    const eventProps2 = store.get(logging.EVENT);
+    const regularFields2 = Object.fromEntries(Array.from(store.entries()).filter(([key]) => key !== logging.EVENT));
+    const result2 = {
+      ...logEvent,
+      fields: {
+        ...logEvent.fields,
+        ...regularFields2
+      }
+    };
+    if (eventProps2 && typeof eventProps2 === "object") {
+      Object.assign(result2, eventProps2);
+    }
+    return result2;
+  }
+  const { [logging.EVENT]: eventProps, ...regularFields } = store;
+  const result = {
+    ...logEvent,
+    fields: {
+      ...logEvent.fields,
+      ...regularFields
+    }
+  };
+  if (eventProps && typeof eventProps === "object") {
+    Object.assign(result, eventProps);
+  }
+  return result;
+};
+const runWithServerContext = (callback, store) => {
+  return storage.run(store, callback);
+};
+exports.runWithServerContext = runWithServerContext;
+exports.serverContextFieldsFormatter = serverContextFieldsFormatter;
+exports.storage = storage;
+//# sourceMappingURL=storage.cjs.map

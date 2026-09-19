@@ -1,0 +1,77 @@
+import { z } from "zod";
+import { RulesFileInstallStrategy } from "./types.js";
+declare const RulesManifestDataSchema: z.ZodObject<{
+    name: z.ZodString;
+    description: z.ZodString;
+    currentVersion: z.ZodString;
+    versions: z.ZodRecord<z.ZodString, z.ZodObject<{
+        options: z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            title: z.ZodString;
+            label: z.ZodString;
+            path: z.ZodString;
+            tokens: z.ZodNumber;
+            client: z.ZodOptional<z.ZodString>;
+            installStrategy: z.ZodOptional<z.ZodString>;
+            applyTo: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+type RulesManifestData = z.infer<typeof RulesManifestDataSchema>;
+export type RulesManifestVersionOption = {
+    name: string;
+    title: string;
+    label: string;
+    contents: string;
+    tokens: number;
+    client: string | undefined;
+    installStrategy: RulesFileInstallStrategy;
+    applyTo: string | undefined;
+};
+export type ManifestVersion = {
+    version: string;
+    options: Array<RulesManifestVersionOption>;
+};
+export declare class RulesManifest {
+    private readonly manifest;
+    private readonly loader;
+    constructor(manifest: RulesManifestData, loader: RulesManifestLoader);
+    get name(): string;
+    get description(): string;
+    get currentVersion(): string;
+    getCurrentVersion(): Promise<ManifestVersion>;
+    get versions(): Record<string, {
+        options: {
+            name: string;
+            title: string;
+            label: string;
+            path: string;
+            tokens: number;
+            client?: string | undefined;
+            installStrategy?: string | undefined;
+            applyTo?: string | undefined;
+        }[];
+    }>;
+}
+export declare function loadRulesManifest(loader: RulesManifestLoader): Promise<RulesManifest>;
+export interface RulesManifestLoader {
+    loadManifestContent(): Promise<string>;
+    loadRulesFile(relativePath: string): Promise<string>;
+}
+/**
+ * Loads agent skills bundled inside the `trigger.dev` CLI (the `skills/` folder shipped
+ * via the package's `files[]`). The CLI is the only source of skills; `skillsDir` and
+ * `version` are resolved from the CLI's own package by the caller and injected here, so
+ * this stays a pure reader. Synthesizes the manifest shape the install pipeline consumes
+ * so skills flow through `loadRulesManifest` -> `getCurrentVersion` -> install, with
+ * `installStrategy: "skills"`. `version` (== the CLI/SDK version) is stamped into each
+ * skill on read in place of the `{{TRIGGER_SDK_VERSION}}` placeholder.
+ */
+export declare class BundledSkillsLoader implements RulesManifestLoader {
+    private readonly skillsDir;
+    private readonly version;
+    constructor(skillsDir: string, version: string);
+    loadManifestContent(): Promise<string>;
+    loadRulesFile(relativePath: string): Promise<string>;
+}
+export {};

@@ -1,0 +1,212 @@
+export declare const serverMetadata: {
+    name: string;
+    version: string;
+    instructions: string;
+};
+export declare const toolsMetadata: {
+    search_docs: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    list_projects: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    list_orgs: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    create_project_in_org: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    initialize_project: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    get_tasks: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    get_current_worker: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    get_task_schema: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    trigger_task: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    get_run_details: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    get_span_details: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    wait_for_run_to_complete: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    cancel_run: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    list_runs: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    deploy: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    list_deploys: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    list_preview_branches: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    query: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    get_query_schema: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    list_dashboards: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    run_dashboard_query: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    get_report: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    whoami: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    list_profiles: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    switch_profile: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    start_dev_server: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    stop_dev_server: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    dev_server_status: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    list_prompts: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    get_prompt_versions: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    promote_prompt_version: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    create_prompt_override: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    update_prompt_override: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    remove_prompt_override: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    reactivate_prompt_override: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    list_agents: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    start_agent_chat: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    send_agent_message: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    close_agent_chat: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    read_session_channel: {
+        name: string;
+        title: string;
+        description: string;
+    };
+    write_session_channel: {
+        name: string;
+        title: string;
+        description: string;
+    };
+};

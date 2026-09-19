@@ -1,0 +1,1 @@
+export declare function formatCommandError(error: unknown): string;

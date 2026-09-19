@@ -1,0 +1,175 @@
+"use client";
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const React = require("react");
+const webVitals = require("web-vitals");
+function _interopNamespaceDefault(e) {
+  const n = Object.create(null, { [Symbol.toStringTag]: { value: "Module" } });
+  if (e) {
+    for (const k in e) {
+      if (k !== "default") {
+        const d = Object.getOwnPropertyDescriptor(e, k);
+        Object.defineProperty(n, k, d.get ? d : {
+          enumerable: true,
+          get: () => e[k]
+        });
+      }
+    }
+  }
+  n.default = e;
+  return Object.freeze(n);
+}
+const React__namespace = /* @__PURE__ */ _interopNamespaceDefault(React);
+const SCALAR_ENTRY_PROPERTIES = [
+  "name",
+  "entryType",
+  "startTime",
+  "duration",
+  "renderTime",
+  "loadTime",
+  "size",
+  "id",
+  "url",
+  "value",
+  "hadRecentInput",
+  "lastInputTime",
+  "processingStart",
+  "processingEnd",
+  "interactionId",
+  "cancelable",
+  "activationStart",
+  "workerStart",
+  "redirectStart",
+  "redirectEnd",
+  "fetchStart",
+  "domainLookupStart",
+  "domainLookupEnd",
+  "connectStart",
+  "secureConnectionStart",
+  "connectEnd",
+  "requestStart",
+  "responseStart",
+  "responseEnd",
+  "transferSize",
+  "encodedBodySize",
+  "decodedBodySize",
+  "nextHopProtocol",
+  "type"
+];
+const RECT_PROPERTIES = ["x", "y", "width", "height", "top", "right", "bottom", "left"];
+function readProperty(value, property) {
+  try {
+    return value[property];
+  } catch {
+    return void 0;
+  }
+}
+function normalizeNode(node) {
+  if (typeof node !== "object" || node === null) {
+    return void 0;
+  }
+  const result = {};
+  for (const property of ["nodeName", "tagName", "id", "className"]) {
+    const value = readProperty(node, property);
+    if (typeof value === "string" && value.length > 0) {
+      result[property] = value;
+    }
+  }
+  return Object.keys(result).length > 0 ? result : void 0;
+}
+function normalizeRect(rect) {
+  if (typeof rect !== "object" || rect === null) {
+    return void 0;
+  }
+  const result = {};
+  for (const property of RECT_PROPERTIES) {
+    const value = readProperty(rect, property);
+    if (typeof value === "number") {
+      result[property] = value;
+    }
+  }
+  return Object.keys(result).length > 0 ? result : void 0;
+}
+function normalizeLayoutShiftSources(sources) {
+  if (!Array.isArray(sources)) {
+    return void 0;
+  }
+  return sources.map((source) => {
+    if (typeof source !== "object" || source === null) {
+      return {};
+    }
+    return {
+      node: normalizeNode(readProperty(source, "node")),
+      previousRect: normalizeRect(readProperty(source, "previousRect")),
+      currentRect: normalizeRect(readProperty(source, "currentRect"))
+    };
+  });
+}
+function normalizePerformanceEntry(entry) {
+  const result = {};
+  for (const property of SCALAR_ENTRY_PROPERTIES) {
+    const value = readProperty(entry, property);
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      result[property] = value;
+    }
+  }
+  const element = normalizeNode(readProperty(entry, "element"));
+  if (element !== void 0) {
+    result.element = element;
+  }
+  const target = normalizeNode(readProperty(entry, "target"));
+  if (target !== void 0) {
+    result.target = target;
+  }
+  const sources = normalizeLayoutShiftSources(readProperty(entry, "sources"));
+  if (sources !== void 0) {
+    result.sources = sources;
+  }
+  return result;
+}
+function useReportWebVitals(pushMetrics, flushMetrics) {
+  const pushMetricsRef = React__namespace.useRef(pushMetrics);
+  const flushMetricsRef = React__namespace.useRef(flushMetrics);
+  React__namespace.useEffect(() => {
+    const effectFlushMetrics = () => {
+      flushMetricsRef.current();
+    };
+    webVitals.onCLS(pushMetricsRef.current);
+    webVitals.onFID(pushMetricsRef.current);
+    webVitals.onLCP(pushMetricsRef.current);
+    webVitals.onINP(pushMetricsRef.current);
+    webVitals.onFCP(pushMetricsRef.current);
+    webVitals.onTTFB(pushMetricsRef.current);
+    document.addEventListener("visibilitychange", effectFlushMetrics);
+    return () => {
+      document.removeEventListener("visibilitychange", effectFlushMetrics);
+    };
+  }, []);
+}
+const transformWebVitalsMetric = (metric) => {
+  return {
+    webVital: {
+      ...metric,
+      entries: metric.entries?.map(normalizePerformanceEntry) ?? []
+    },
+    _time: (/* @__PURE__ */ new Date()).getTime(),
+    source: "web-vital",
+    path: window.location.pathname
+  };
+};
+const createWebVitalsComponent = (logger) => {
+  const sendMetrics = (metric) => {
+    logger.raw(transformWebVitalsMetric(metric));
+  };
+  const flushMetrics = () => {
+    logger.flush();
+  };
+  return () => {
+    useReportWebVitals(sendMetrics, flushMetrics);
+    return /* @__PURE__ */ React__namespace.createElement(React__namespace.Fragment, null);
+  };
+};
+exports.createWebVitalsComponent = createWebVitalsComponent;
+exports.transformWebVitalsMetric = transformWebVitalsMetric;
+exports.useReportWebVitals = useReportWebVitals;
+//# sourceMappingURL=web-vitals.cjs.map

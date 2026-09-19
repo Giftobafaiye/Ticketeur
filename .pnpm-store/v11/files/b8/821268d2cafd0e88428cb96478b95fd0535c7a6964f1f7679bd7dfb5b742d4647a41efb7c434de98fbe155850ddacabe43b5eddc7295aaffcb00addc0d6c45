@@ -1,0 +1,21 @@
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const runtime = require("./lib/runtime.cjs");
+const frameworkIdentifier = {
+  name: "react-axiom-version",
+  version: runtime.Version
+};
+const axiomClient = `axiom-react/${runtime.Version}`;
+const frameworkIdentifierFormatter = (logEvent) => {
+  return {
+    ...logEvent,
+    "@app": {
+      ...logEvent["@app"],
+      [frameworkIdentifier.name]: frameworkIdentifier.version
+    }
+  };
+};
+exports.axiomClient = axiomClient;
+exports.frameworkIdentifier = frameworkIdentifier;
+exports.frameworkIdentifierFormatter = frameworkIdentifierFormatter;
+//# sourceMappingURL=identifier.cjs.map

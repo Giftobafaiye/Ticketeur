@@ -1,0 +1,352 @@
+import { FetchClient } from './fetchClient.js';
+
+const Version = 'AXIOM_VERSION';
+const AxiomURL = 'https://api.axiom.co';
+const AxiomClientHeader = 'X-Axiom-Client';
+
+/**
+ * ClientOptions is used to configure the HTTPClient and provide the necessary
+ * authentication information.
+ *
+ * @example
+ * ```
+ * const axiom = new Axiom({
+ *     token: "my-token",
+ *     orgId: "my-org-id",
+ * })
+ * ```
+ *
+ * @example
+ * ```
+ * // Using an edge domain for lower latency ingestion
+ * const axiom = new Axiom({
+ *     token: "my-token",
+ *     edge: "eu-central-1.aws.edge.axiom.co",
+ * })
+ * ```
+ *
+ * @example
+ * ```
+ * // Using both url (for API operations) and edge (for ingest/query)
+ * const axiom = new Axiom({
+ *     token: "my-token",
+ *     url: "https://api.eu.axiom.co",
+ *     edge: "eu-central-1.aws.edge.axiom.co",
+ * })
+ * ```
+ */
+export interface ClientOptions {
+  /**
+   * an API or personal token to use for authentication, you can get one
+   * from @{link: Axiom settings | https://app.axiom.co/api-tokens}.
+   */
+  token: string;
+  /**
+   * the ID of the organization to use, you can get this from Axiom settings page of your
+   * organization. This is only needed if you are using a personal token.
+   */
+  orgId?: string;
+  /**
+   * URI of the Axiom API endpoint. Used for all API operations (datasets, users, etc.).
+   * When edge options are set, this is used for non-ingest/query operations only.
+   *
+   * @example "https://api.eu.axiom.co"
+   */
+  url?: string;
+  /**
+   * The Axiom edge domain for ingestion and query operations.
+   * Specify just the domain without scheme (https:// is added automatically).
+   * When set, ingest and query operations are routed to this edge endpoint.
+   * Can be used together with `url` - in that case, `url` handles API operations
+   * while `edge` handles ingest/query.
+   *
+   * @example "eu-central-1.aws.edge.axiom.co"
+   */
+  edge?: string;
+  /**
+   * The Axiom edge URL for ingestion and query operations.
+   * Specify the full URL with scheme.
+   * Takes precedence over `edge` if both are set.
+   * If the URL has a custom path, it is used as-is.
+   * If the URL has no path, the edge path format is used.
+   *
+   * @example "https://eu-central-1.aws.edge.axiom.co"
+   * @example "http://localhost:3400/ingest"
+   */
+  edgeUrl?: string;
+  /**
+   * Additional product tokens to append to the X-Axiom-Client header.
+   * Use product/version tokens separated by spaces.
+   *
+   * @example "axiom-react/1.2.3 my-app/4.5.6"
+   */
+  axiomClient?: string;
+  onError?: (error: Error) => void;
+  /**
+   * Custom fetch implementation. When provided, all HTTP requests use this
+   * function instead of the global `fetch`. Useful for routing through a
+   * proxy with a custom dispatcher (e.g., `undici.ProxyAgent`).
+   *
+   * @example
+   * ```
+   * import { ProxyAgent } from 'undici';
+   *
+   * const dispatcher = new ProxyAgent('http://proxy:8080');
+   * const axiom = new Axiom({
+   *     token: "my-token",
+   *     fetch: (input, init) => fetch(input, { ...init, dispatcher }),
+   * })
+   * ```
+   */
+  fetch?: typeof globalThis.fetch;
+}
+
+/**
+ * Builds an ingest URL using edge path format: /v1/ingest/{dataset}
+ */
+function buildEdgeIngestUrl(baseUrl: string, dataset: string): string {
+  try {
+    const parsed = new URL(baseUrl);
+    const path = parsed.pathname;
+
+    if (path === '' || path === '/') {
+      // Use edge path format
+      parsed.pathname = `/v1/ingest/${dataset}`;
+      return parsed.toString();
+    }
+
+    // URL has a custom path, use as-is (trim trailing slashes)
+    parsed.pathname = path.replace(/\/+$/, '');
+    return parsed.toString();
+  } catch {
+    // If URL parsing fails, do simple string concatenation as fallback
+    const trimmed = baseUrl.replace(/\/+$/, '');
+    return `${trimmed}/v1/ingest/${dataset}`;
+  }
+}
+
+/**
+ * Builds an ingest URL using legacy path format: /v1/datasets/{dataset}/ingest
+ */
+function buildLegacyIngestUrl(baseUrl: string, dataset: string): string {
+  try {
+    const parsed = new URL(baseUrl);
+    const path = parsed.pathname;
+
+    if (path === '' || path === '/') {
+      // Use legacy path format
+      parsed.pathname = `/v1/datasets/${dataset}/ingest`;
+      return parsed.toString();
+    }
+
+    // URL has a custom path, use as-is (trim trailing slashes)
+    parsed.pathname = path.replace(/\/+$/, '');
+    return parsed.toString();
+  } catch {
+    // If URL parsing fails, do simple string concatenation as fallback
+    const trimmed = baseUrl.replace(/\/+$/, '');
+    return `${trimmed}/v1/datasets/${dataset}/ingest`;
+  }
+}
+
+/**
+ * Resolves the ingest endpoint URL based on the client options.
+ *
+ * Priority: edgeUrl > edge > url > default cloud endpoint
+ *
+ * Edge endpoints use: /v1/ingest/{dataset}
+ * Legacy endpoints use: /v1/datasets/{dataset}/ingest
+ *
+ * @param options - The client options
+ * @param dataset - The dataset name to ingest into
+ * @returns The full URL to use for ingestion
+ */
+export function resolveIngestUrl(options: Pick<ClientOptions, 'url' | 'edge' | 'edgeUrl'>, dataset: string): string {
+  // If edgeUrl is set, use it (takes precedence over edge)
+  if (options.edgeUrl) {
+    return buildEdgeIngestUrl(options.edgeUrl, dataset);
+  }
+
+  // If edge domain is set, build edge URL
+  if (options.edge) {
+    return `https://${options.edge}/v1/ingest/${dataset}`;
+  }
+
+  // If url is set, use legacy path format
+  if (options.url) {
+    return buildLegacyIngestUrl(options.url, dataset);
+  }
+
+  // Default: use cloud endpoint with legacy path format
+  return `${AxiomURL}/v1/datasets/${dataset}/ingest`;
+}
+
+function buildQueryUrl(baseUrl: string, path: string): string {
+  try {
+    const parsed = new URL(baseUrl);
+    const currentPath = parsed.pathname;
+
+    if (currentPath === '' || currentPath === '/') {
+      parsed.pathname = path;
+      return parsed.toString();
+    }
+
+    parsed.pathname = currentPath.replace(/\/+$/, '');
+    return parsed.toString();
+  } catch {
+    const trimmed = baseUrl.replace(/\/+$/, '');
+    return `${trimmed}${path}`;
+  }
+}
+
+const edgeDeploymentUrls: Record<string, string> = {
+  'cloud.us-east-1.aws': 'https://us-east-1.aws.edge.axiom.co',
+  'cloud.eu-central-1.aws': 'https://eu-central-1.aws.edge.axiom.co',
+};
+
+function resolveEdgeUrlFromDeployment(edgeDeployment: string | null | undefined): string | undefined {
+  if (!edgeDeployment || edgeDeployment === 'null') {
+    return undefined;
+  }
+
+  return edgeDeploymentUrls[edgeDeployment.toLowerCase()];
+}
+
+function assertNoUnsupportedEdgeDeployment(edgeDeployment: string | null | undefined, operation: string) {
+  if (!edgeDeployment || edgeDeployment === 'null' || resolveEdgeUrlFromDeployment(edgeDeployment)) {
+    return;
+  }
+
+  throw new Error(
+    `Unsupported edgeDeployment "${edgeDeployment}". Pass edgeUrl or edge to route ${operation} to that deployment.`,
+  );
+}
+
+export function resolveEdgeQueryUrl(
+  clientOptions: Pick<ClientOptions, 'url' | 'edge' | 'edgeUrl'>,
+  options: { edge?: string; edgeUrl?: string; edgeDeployment?: string | null } | undefined,
+  path: string,
+  operation: string,
+): string {
+  if (options?.edgeUrl) {
+    return buildQueryUrl(options.edgeUrl, path);
+  }
+
+  if (options?.edge) {
+    return `https://${options.edge}${path}`;
+  }
+
+  const deploymentEdgeUrl = resolveEdgeUrlFromDeployment(options?.edgeDeployment);
+  if (deploymentEdgeUrl) {
+    return buildQueryUrl(deploymentEdgeUrl, path);
+  }
+
+  assertNoUnsupportedEdgeDeployment(options?.edgeDeployment, operation);
+
+  if (clientOptions.edgeUrl) {
+    return buildQueryUrl(clientOptions.edgeUrl, path);
+  }
+
+  if (clientOptions.edge) {
+    return `https://${clientOptions.edge}${path}`;
+  }
+
+  throw new Error(`${operation} must be routed to an Axiom edge deployment. Set edge, edgeUrl, or edgeDeployment.`);
+}
+
+/**
+ * Resolves the APL query endpoint URL.
+ *
+ * @see https://axiom.co/docs/restapi/endpoints/queryApl
+ * @see https://axiom.co/docs/restapi/endpoints/queryEdge
+ */
+export function resolveAplQueryUrl(options: Pick<ClientOptions, 'url' | 'edge' | 'edgeUrl'>): string {
+  if (options.edgeUrl) {
+    return buildQueryUrl(options.edgeUrl, '/v1/query/_apl');
+  }
+
+  if (options.edge) {
+    return `https://${options.edge}/v1/query/_apl`;
+  }
+
+  if (options.url) {
+    return buildQueryUrl(options.url, '/v1/datasets/_apl');
+  }
+
+  return `${AxiomURL}/v1/datasets/_apl`;
+}
+
+/**
+ * Resolves the MPL query endpoint URL.
+ *
+ * @see https://axiom.co/docs/restapi/endpoints/queryMetrics
+ */
+export function resolveMplQueryUrl(
+  clientOptions: Pick<ClientOptions, 'url' | 'edge' | 'edgeUrl'>,
+  options?: { edge?: string; edgeUrl?: string; edgeDeployment?: string | null },
+): string {
+  return resolveEdgeQueryUrl(clientOptions, options, '/v1/query/_mpl', 'MPL queries');
+}
+
+export default abstract class HTTPClient {
+  protected readonly client: FetchClient;
+  protected readonly clientOptions: ClientOptions;
+
+  constructor({ orgId = '', token, url, edge, edgeUrl, axiomClient, onError, fetch: fetchFn }: ClientOptions) {
+    if (!token) {
+      console.warn('Missing Axiom token');
+    }
+
+    // Store options for use in ingest URL resolution
+    this.clientOptions = { orgId, token, url, edge, edgeUrl, axiomClient, onError, fetch: fetchFn };
+
+    // For the main API client, always use url or default (never edge options)
+    // edge/edgeUrl only affects ingest endpoints, not other API calls
+    const baseUrl = url ? url.replace(/\/+$/, '') : AxiomURL;
+
+    const headers: HeadersInit = {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + token,
+      [AxiomClientHeader]: appendAxiomClient('axiom-js/' + Version, axiomClient),
+    };
+    if (orgId) {
+      headers['X-Axiom-Org-Id'] = orgId;
+    }
+
+    this.client = new FetchClient({
+      baseUrl,
+      headers,
+      timeout: 20_000,
+      ...(fetchFn && { fetch: fetchFn }),
+    });
+  }
+
+  appendAxiomClient(axiomClient: string) {
+    const headers = this.client.config.headers as Record<string, string>;
+    if (!headers[AxiomClientHeader]) {
+      return;
+    }
+
+    headers[AxiomClientHeader] = appendAxiomClient(headers[AxiomClientHeader], axiomClient);
+  }
+}
+
+export function appendAxiomClient(baseAxiomClient: string, axiomClient?: string): string {
+  const additionalProducts = axiomClient?.trim().split(/\s+/).filter(Boolean) ?? [];
+  if (additionalProducts.length === 0) {
+    return baseAxiomClient;
+  }
+
+  const products = baseAxiomClient.trim().split(/\s+/).filter(Boolean);
+  const productSet = new Set(products);
+
+  for (const product of additionalProducts) {
+    if (!productSet.has(product)) {
+      products.push(product);
+      productSet.add(product);
+    }
+  }
+
+  return products.join(' ');
+}

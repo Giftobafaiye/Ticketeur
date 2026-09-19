@@ -1,0 +1,435 @@
+import type { CreateArtifactRequestBody, CreateBackgroundWorkerRequestBody, DevDequeueRequestBody, DevDisconnectRequestBody, FailDeploymentRequestBody, FinalizeDeploymentRequestBody, ImportEnvironmentVariablesRequestBody, InitializeDeploymentRequestBody, StartDeploymentIndexingRequestBody, TriggerTaskRequestBody, UpsertBranchRequestBody, WorkersCreateRequestBody, CreateProjectRequestBody, GetJWTRequestBody } from "@trigger.dev/core/v3";
+import { DevConfigResponseBody, DevDequeueResponseBody, DevDisconnectResponseBody, FailDeploymentResponseBody } from "@trigger.dev/core/v3";
+import { type ReportViewModel } from "@trigger.dev/core/v3/schemas";
+import type { WorkloadDebugLogRequestBody, WorkloadHeartbeatRequestBody, WorkloadRunAttemptCompleteRequestBody, WorkloadRunAttemptStartRequestBody } from "@trigger.dev/core/v3/workers";
+import { WorkloadHeartbeatResponseBody, WorkloadRunAttemptCompleteResponseBody, WorkloadRunAttemptStartResponseBody, WorkloadRunLatestSnapshotResponseBody } from "@trigger.dev/core/v3/workers";
+import type { ApiResult } from "@trigger.dev/core/v3/zodfetch";
+import { EventSource } from "eventsource";
+export declare class CliApiClient {
+    readonly apiURL: string;
+    readonly accessToken?: string | undefined;
+    readonly branch?: string | undefined;
+    private engineURL;
+    private source;
+    constructor(apiURL: string, accessToken?: string | undefined, branch?: string | undefined, options?: {
+        source?: "cli" | "mcp";
+    });
+    createAuthorizationCode(): Promise<ApiResult<{
+        url: string;
+        authorizationCode: string;
+    }>>;
+    getPersonalAccessToken(authorizationCode: string): Promise<ApiResult<{
+        token: {
+            token: string;
+            obfuscatedToken: string;
+        } | null;
+    }>>;
+    whoAmI(projectRef?: string): Promise<ApiResult<{
+        userId: string;
+        email: string;
+        dashboardUrl: string;
+        project?: {
+            name: string;
+            url: string;
+            orgTitle: string;
+        } | undefined;
+    }>>;
+    retrieveExternals(): Promise<ApiResult<{
+        externals: string[];
+    }>>;
+    getProject(projectRef: string): Promise<ApiResult<{
+        id: string;
+        externalRef: string;
+        name: string;
+        slug: string;
+        createdAt: Date;
+        defaultRegion?: string | null | undefined;
+        defaultRuntime?: "bun" | "node" | "node-22" | "node-24" | "node-26" | null | undefined;
+        organization: {
+            id: string;
+            title: string;
+            slug: string;
+            createdAt: Date;
+        };
+    }>>;
+    markProjectInitialized(projectRef: string): Promise<ApiResult<{
+        id: string;
+        initializedAt: string | null;
+    }>>;
+    getProjects(): Promise<ApiResult<{
+        id: string;
+        externalRef: string;
+        name: string;
+        slug: string;
+        createdAt: Date;
+        defaultRegion?: string | null | undefined;
+        defaultRuntime?: "bun" | "node" | "node-22" | "node-24" | "node-26" | null | undefined;
+        organization: {
+            id: string;
+            title: string;
+            slug: string;
+            createdAt: Date;
+        };
+    }[]>>;
+    getProjectRuntimes(): Promise<ApiResult<{
+        organization: {
+            title: string;
+            slug: string;
+        };
+        project: {
+            name: string;
+            slug: string;
+            externalRef: string;
+        };
+        environment: {
+            slug: string;
+        };
+        deployment: {
+            runtime: string | null;
+            runtimeVersion: string | null;
+            nodeMajor: number | null;
+            deployedAt: Date | null;
+            shortCode: string;
+        } | null;
+    }[]>>;
+    getOrgs(): Promise<ApiResult<{
+        id: string;
+        title: string;
+        slug: string;
+        createdAt: Date;
+    }[]>>;
+    createProject(orgParam: string, body: CreateProjectRequestBody): Promise<ApiResult<{
+        id: string;
+        externalRef: string;
+        name: string;
+        slug: string;
+        createdAt: Date;
+        defaultRegion?: string | null | undefined;
+        defaultRuntime?: "bun" | "node" | "node-22" | "node-24" | "node-26" | null | undefined;
+        organization: {
+            id: string;
+            title: string;
+            slug: string;
+            createdAt: Date;
+        };
+    }>>;
+    renameProject(projectRef: string, body: {
+        name: string;
+    }): Promise<ApiResult<{
+        id: string;
+        name: string;
+    }>>;
+    getWorkerByTag(projectRef: string, envName: string, tagName?: string): Promise<ApiResult<{
+        worker: {
+            id: string;
+            version: string;
+            engine?: string | null | undefined;
+            sdkVersion?: string | null | undefined;
+            cliVersion?: string | null | undefined;
+            tasks: {
+                id: string;
+                slug: string;
+                filePath: string;
+                triggerSource: string;
+                createdAt: Date;
+                payloadSchema?: any;
+                queueConfig?: any;
+            }[];
+        };
+        urls: {
+            runs: string;
+        };
+    }>>;
+    mintUserActorToken(body?: {
+        cap?: string[];
+        client?: string;
+        ttlSeconds?: number;
+    }): Promise<ApiResult<{
+        token: string;
+        expiresInSeconds: number;
+    }>>;
+    getJWT(projectRef: string, envName: string, body: GetJWTRequestBody): Promise<ApiResult<{
+        token: string;
+        environmentId?: string | undefined;
+    }>>;
+    getDevStatus(projectRef: string): Promise<ApiResult<{
+        isConnected: boolean;
+    }>>;
+    createBackgroundWorker(projectRef: string, body: CreateBackgroundWorkerRequestBody): Promise<ApiResult<{
+        id: string;
+        version: string;
+        contentHash: string;
+        warnings?: {
+            code: "schedule_default_window" | "schedule_minimum_window";
+            message: string;
+        }[] | undefined;
+    }>>;
+    getProjectEnv({ projectRef, env }: {
+        projectRef: string;
+        env: string;
+    }): Promise<ApiResult<{
+        apiKey: string;
+        name: string;
+        apiUrl: string;
+        projectId: string;
+        defaultRuntime?: "bun" | "node" | "node-22" | "node-24" | "node-26" | null | undefined;
+    }>>;
+    upsertBranch(projectRef: string, body: UpsertBranchRequestBody): Promise<ApiResult<{
+        id: string;
+        autoArchivedBranches?: {
+            id: string;
+            branchName: string;
+        }[] | undefined;
+    }>>;
+    archiveBranch(projectRef: string, env: UpsertBranchRequestBody["env"], branch: string): Promise<ApiResult<{
+        branch: {
+            id: string;
+        };
+    }>>;
+    listBranches(projectRef: string): Promise<ApiResult<{
+        branches: {
+            id: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            git?: Record<string, any> | undefined;
+            isPaused: boolean;
+        }[];
+    }>>;
+    getEnvironmentVariables(projectRef: string): Promise<ApiResult<{
+        variables: Record<string, string>;
+    }>>;
+    /**
+     * `format: "json"` returns a `ReportViewModel`; "markdown" (default) and "ansi" return a rendered
+     * string. `period` is a shorthand like "1h" or "7d", capped at 90d. Seconds are not accepted.
+     */
+    getReport(key: string, options: {
+        period?: string;
+        format: "json";
+    }): Promise<ReportViewModel>;
+    getReport(key: string, options?: {
+        period?: string;
+        format?: "markdown" | "ansi";
+    }): Promise<string>;
+    importEnvVars(projectRef: string, slug: string, params: ImportEnvironmentVariablesRequestBody): Promise<ApiResult<{
+        success: boolean;
+    }>>;
+    getDeploySettings(projectRef: string, env: string, signal?: AbortSignal): Promise<ApiResult<{
+        build_path: "depot" | "native" | "native_local_bundle";
+    }>>;
+    getRemoteBuildProviderStatus(): Promise<ApiResult<{
+        status: "degraded" | "operational" | "unknown";
+        message: string;
+    }>>;
+    generateRegistryCredentials(deploymentId: string): Promise<ApiResult<{
+        username: string;
+        password: string;
+        expiresAt: string;
+        repositoryUri: string;
+    }>>;
+    createArtifact(body: CreateArtifactRequestBody): Promise<ApiResult<{
+        artifactKey: string;
+        uploadUrl: string;
+        uploadFields: Record<string, string>;
+        expiresAt: string;
+    }>>;
+    initializeDeployment(body: InitializeDeploymentRequestBody): Promise<ApiResult<{
+        id: string;
+        contentHash: string;
+        shortCode: string;
+        version: string;
+        imageTag: string;
+        imagePlatform: string;
+        externalId?: string | undefined;
+        outcome?: "created" | "existing" | undefined;
+        isPromoted?: boolean | undefined;
+        externalBuildData?: {
+            buildId: string;
+            buildToken: string;
+            projectId: string;
+        } | null | undefined;
+        canceledDeployments?: {
+            version: string;
+            shortCode: string;
+        }[] | undefined;
+        eventStream?: {
+            s2: {
+                basin: string;
+                stream: string;
+                accessToken: string;
+            };
+        } | undefined;
+    }>>;
+    createDeploymentBackgroundWorker(deploymentId: string, body: CreateBackgroundWorkerRequestBody): Promise<ApiResult<{
+        id: string;
+        version: string;
+        contentHash: string;
+        warnings?: {
+            code: "schedule_default_window" | "schedule_minimum_window";
+            message: string;
+        }[] | undefined;
+    }>>;
+    failDeployment(id: string, body: FailDeploymentRequestBody): Promise<ApiResult<{
+        id: string;
+    }>>;
+    finalizeDeployment(id: string, body: FinalizeDeploymentRequestBody, onLog?: (message: string) => void): Promise<ApiResult<FailDeploymentResponseBody>>;
+    promoteDeployment(version: string): Promise<ApiResult<{
+        id: string;
+        version: string;
+        shortCode: string;
+    }>>;
+    startDeploymentIndexing(deploymentId: string, body: StartDeploymentIndexingRequestBody): Promise<ApiResult<{
+        id: string;
+        contentHash: string;
+    }>>;
+    getDeployment(deploymentId: string): Promise<ApiResult<{
+        id: string;
+        status: "BUILDING" | "CANCELED" | "DEPLOYED" | "DEPLOYING" | "FAILED" | "INSTALLING" | "PENDING" | "TIMED_OUT";
+        contentHash: string;
+        shortCode: string;
+        version: string;
+        imageReference?: string | null | undefined;
+        imagePlatform: string;
+        commitSHA?: string | null | undefined;
+        externalId?: string | undefined;
+        externalBuildData?: {
+            buildId: string;
+            buildToken: string;
+            projectId: string;
+        } | null | undefined;
+        errorData?: {
+            name: string;
+            message: string;
+            stack?: string | undefined;
+            stderr?: string | undefined;
+        } | null | undefined;
+        canceledReason?: string | null | undefined;
+        worker?: {
+            id: string;
+            version: string;
+            tasks: {
+                id: string;
+                slug: string;
+                filePath: string;
+                exportName?: string | undefined;
+            }[];
+        } | undefined;
+        integrationDeployments?: {
+            id: string;
+            integrationName: string;
+            integrationDeploymentId: string;
+            commitSHA: string;
+            createdAt: Date;
+        }[] | null | undefined;
+    }>>;
+    getDeploymentBuildEnvVars(deploymentId: string): Promise<ApiResult<{
+        variables: Record<string, string>;
+    }>>;
+    getCliPlatformNotification(projectRef?: string, signal?: AbortSignal): Promise<ApiResult<{
+        notification: {
+            id: string;
+            payload: {
+                version: string;
+                data: {
+                    type: "error" | "info" | "success" | "warn";
+                    title: string;
+                    description: string;
+                    actionLabel?: string | undefined;
+                    actionUrl?: string | undefined;
+                    discovery?: {
+                        filePatterns: string[];
+                        contentPattern?: string | undefined;
+                        matchBehavior: "show-if-found" | "show-if-not-found";
+                    } | undefined;
+                };
+            };
+            showCount: number;
+            firstSeenAt: string;
+        } | null;
+    }>>;
+    triggerTaskRun(taskId: string, body?: TriggerTaskRequestBody): Promise<ApiResult<{
+        id: string;
+        isCached?: boolean | undefined;
+    }>>;
+    get dev(): {
+        readonly config: () => Promise<ApiResult<DevConfigResponseBody>>;
+        readonly presenceConnection: () => EventSource;
+        readonly dequeue: (body: DevDequeueRequestBody) => Promise<ApiResult<DevDequeueResponseBody>>;
+        readonly sendDebugLog: (runId: string, body: WorkloadDebugLogRequestBody) => Promise<ApiResult<unknown>>;
+        readonly getRunExecutionData: (runId: string) => Promise<ApiResult<WorkloadRunLatestSnapshotResponseBody>>;
+        readonly heartbeatRun: (runId: string, snapshotId: string, body: WorkloadHeartbeatRequestBody) => Promise<ApiResult<WorkloadHeartbeatResponseBody>>;
+        readonly startRunAttempt: (runId: string, snapshotId: string, body?: WorkloadRunAttemptStartRequestBody) => Promise<ApiResult<WorkloadRunAttemptStartResponseBody>>;
+        readonly completeRunAttempt: (runId: string, snapshotId: string, body: WorkloadRunAttemptCompleteRequestBody) => Promise<ApiResult<WorkloadRunAttemptCompleteResponseBody>>;
+        readonly disconnect: (body: DevDisconnectRequestBody) => Promise<ApiResult<DevDisconnectResponseBody>>;
+        readonly setEngineURL: (engineURL: string) => void;
+    };
+    get workers(): {
+        list: () => Promise<ApiResult<{
+            type: string;
+            name: string;
+            description?: string | null | undefined;
+            latestVersion?: string | null | undefined;
+            lastHeartbeatAt?: string | null | undefined;
+            isDefault: boolean;
+            updatedAt: Date;
+        }[]>>;
+        create: (options: WorkersCreateRequestBody) => Promise<ApiResult<{
+            workerGroup: {
+                name: string;
+                description?: string | null | undefined;
+            };
+            token: {
+                plaintext: string;
+            };
+        }>>;
+    };
+    get deployments(): {
+        unmanaged: {
+            latest: () => Promise<ApiResult<{
+                id: string;
+                status: "BUILDING" | "CANCELED" | "DEPLOYED" | "DEPLOYING" | "FAILED" | "INSTALLING" | "PENDING" | "TIMED_OUT";
+                contentHash: string;
+                shortCode: string;
+                version: string;
+                imageReference?: string | null | undefined;
+                imagePlatform: string;
+                commitSHA?: string | null | undefined;
+                externalId?: string | undefined;
+                externalBuildData?: {
+                    buildId: string;
+                    buildToken: string;
+                    projectId: string;
+                } | null | undefined;
+                errorData?: {
+                    name: string;
+                    message: string;
+                    stack?: string | undefined;
+                    stderr?: string | undefined;
+                } | null | undefined;
+                canceledReason?: string | null | undefined;
+                integrationDeployments?: {
+                    id: string;
+                    integrationName: string;
+                    integrationDeploymentId: string;
+                    commitSHA: string;
+                    createdAt: Date;
+                }[] | null | undefined;
+            }>>;
+        };
+    };
+    private getLatestUnmanagedDeployment;
+    private listWorkers;
+    private createWorker;
+    private devConfig;
+    private devPresenceConnection;
+    private devDisconnect;
+    private devDequeue;
+    private devSendDebugLog;
+    private devGetRunExecutionData;
+    private devHeartbeatRun;
+    private devStartRunAttempt;
+    private devCompleteRunAttempt;
+    private setEngineURL;
+    private getHeaders;
+    private getBranchHeader;
+}

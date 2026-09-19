@@ -1,0 +1,194 @@
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const logger = require("../logger.cjs");
+const safeStringify = require("../internal/safe-stringify.cjs");
+const MAX_EVENTS = 1e3;
+const BATCH_TIMEOUT_MS = 1e4;
+const RETRY_DELAY_MS = 1e3;
+const WARNING_INTERVAL_MS = 3e4;
+const RETRYABLE_STATUSES = /* @__PURE__ */ new Set([429, 500, 502, 503, 504]);
+function retryAfterMs(value) {
+  if (value === null) return void 0;
+  if (/^\d+$/.test(value.trim())) {
+    const delay = Number(value) * 1e3;
+    return Number.isFinite(delay) ? delay : void 0;
+  }
+  const date = Date.parse(value);
+  return Number.isNaN(date) ? void 0 : Math.max(0, date - Date.now());
+}
+class SimpleFetchTransport {
+  fetchConfig;
+  events = [];
+  timer = null;
+  flushing = false;
+  inFlight = [];
+  sequence = 0;
+  requestedThrough = 0;
+  waiters = /* @__PURE__ */ new Set();
+  retryAfterUntil = 0;
+  lastWarningAt = -Infinity;
+  dropped = {};
+  constructor(config) {
+    this.fetchConfig = config;
+  }
+  log = (logs) => {
+    let dropped = 0;
+    for (const event of logs) {
+      if (!(logger.LogLevelValue[event.level ?? logger.LogLevel.info] >= logger.LogLevelValue[this.fetchConfig.logLevel ?? logger.LogLevel.info])) {
+        continue;
+      }
+      if (this.events.length === MAX_EVENTS) {
+        this.events.shift();
+        dropped += 1;
+      }
+      this.events.push({ sequence: ++this.sequence, event });
+    }
+    this.settleWaiters();
+    if (dropped > 0) this.reportDrop("overflow", dropped);
+    const autoFlush = this.fetchConfig.autoFlush;
+    if (autoFlush === void 0 || autoFlush === false || this.events.length === 0) return;
+    if (this.events.length === MAX_EVENTS && !this.flushing) {
+      void this.flush();
+    } else if (this.timer === null) {
+      const delay = typeof autoFlush === "boolean" ? 2e3 : autoFlush.durationMs;
+      this.timer = setTimeout(() => {
+        this.timer = null;
+        void this.flush();
+      }, delay);
+    }
+  };
+  /** Wait for events accepted before this call to be sent or explicitly dropped. */
+  async flush() {
+    if (this.timer !== null) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    const through = this.sequence;
+    if (through < this.oldestOutstanding()) return;
+    const completed = new Promise((resolve) => this.waiters.add({ through, resolve }));
+    this.requestedThrough = through;
+    if (!this.flushing) {
+      this.flushing = true;
+      void this.drain();
+    }
+    await completed;
+  }
+  oldestOutstanding() {
+    return this.inFlight[0]?.sequence ?? this.events[0]?.sequence ?? this.sequence + 1;
+  }
+  settleWaiters() {
+    const oldest = this.oldestOutstanding();
+    for (const waiter of this.waiters) {
+      if (waiter.through < oldest) {
+        this.waiters.delete(waiter);
+        waiter.resolve();
+      }
+    }
+  }
+  async drain() {
+    try {
+      while (this.events.length > 0 && this.events[0].sequence <= this.requestedThrough) {
+        const next = this.events.findIndex((event) => event.sequence > this.requestedThrough);
+        this.inFlight = this.events.splice(0, next < 0 ? this.events.length : next);
+        const reason = await this.sendBatch(this.inFlight.map(({ event }) => event));
+        if (reason) this.reportDrop(reason, this.inFlight.length);
+        this.inFlight = [];
+        this.settleWaiters();
+      }
+    } finally {
+      this.flushing = false;
+    }
+  }
+  /** One retry, sharing a deadline with the first attempt and any backoff. */
+  async sendBatch(events) {
+    const controller = new AbortController();
+    const { input, init } = this.fetchConfig;
+    const callerSignal = init?.signal !== void 0 ? init.signal : input instanceof Request ? input.signal : void 0;
+    const abortFromCaller = () => controller.abort();
+    callerSignal?.addEventListener("abort", abortFromCaller, { once: true });
+    if (callerSignal?.aborted) controller.abort();
+    const deadline = Date.now() + BATCH_TIMEOUT_MS;
+    const timeout = setTimeout(() => controller.abort(), BATCH_TIMEOUT_MS);
+    let onAbort = () => {
+    };
+    const aborted = new Promise((_, reject) => {
+      onAbort = () => reject(new Error("Log batch aborted"));
+      controller.signal.addEventListener("abort", onAbort, { once: true });
+    });
+    void aborted.catch(() => {
+    });
+    const pause = async (delay) => {
+      let timer;
+      try {
+        await Promise.race([new Promise((resolve) => timer = setTimeout(resolve, delay)), aborted]);
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+    try {
+      const body = safeStringify.safeStringify(events);
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        if (controller.signal.aborted || Date.now() >= deadline) {
+          return callerSignal?.aborted ? "cancelled" : "timeout";
+        }
+        const cooldown = Math.max(0, this.retryAfterUntil - Date.now());
+        if (cooldown >= deadline - Date.now()) return "server backoff";
+        if (cooldown > 0) await pause(cooldown);
+        if (controller.signal.aborted || Date.now() >= deadline) {
+          return callerSignal?.aborted ? "cancelled" : "timeout";
+        }
+        let response;
+        try {
+          response = await Promise.race([
+            Promise.resolve().then(
+              () => fetch(this.fetchConfig.input, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                ...this.fetchConfig.init,
+                body,
+                signal: controller.signal
+              })
+            ),
+            aborted
+          ]);
+        } catch {
+          if (controller.signal.aborted) return callerSignal?.aborted ? "cancelled" : "timeout";
+          if (attempt === 1) return "network error";
+          if (RETRY_DELAY_MS >= deadline - Date.now()) return "timeout";
+          await pause(RETRY_DELAY_MS);
+          continue;
+        }
+        void response.body?.cancel().catch(() => {
+        });
+        if (response.ok) return;
+        const retryDelay = retryAfterMs(response.headers.get("Retry-After"));
+        if (RETRYABLE_STATUSES.has(response.status) && retryDelay !== void 0) {
+          this.retryAfterUntil = Math.max(this.retryAfterUntil, Date.now() + retryDelay);
+        }
+        if (!RETRYABLE_STATUSES.has(response.status) || attempt === 1) return `HTTP ${response.status}`;
+        const delay = Math.max(RETRY_DELAY_MS, retryDelay ?? 0);
+        if (delay >= deadline - Date.now()) return "server backoff";
+        await pause(delay);
+      }
+    } catch {
+      return callerSignal?.aborted ? "cancelled" : controller.signal.aborted ? "timeout" : "request error";
+    } finally {
+      clearTimeout(timeout);
+      callerSignal?.removeEventListener("abort", abortFromCaller);
+      controller.signal.removeEventListener("abort", onAbort);
+    }
+  }
+  reportDrop(reason, count) {
+    this.dropped[reason] = (this.dropped[reason] ?? 0) + count;
+    if (Date.now() - this.lastWarningAt < WARNING_INTERVAL_MS) return;
+    const dropped = this.dropped;
+    this.dropped = {};
+    this.lastWarningAt = Date.now();
+    try {
+      console.warn("[Axiom] Dropped log events:", dropped);
+    } catch {
+    }
+  }
+}
+exports.SimpleFetchTransport = SimpleFetchTransport;
+//# sourceMappingURL=fetch.cjs.map

@@ -1,0 +1,21 @@
+import type { CliApiClient } from "../apiClient.js";
+type CliLogLevel = "info" | "warn" | "error" | "success";
+type PlatformNotification = {
+    level: CliLogLevel;
+    title: string;
+    description: string;
+    actionUrl?: string;
+};
+type FetchNotificationOptions = {
+    apiClient: CliApiClient;
+    projectRef?: string;
+    projectRoot?: string;
+};
+export declare function fetchPlatformNotification(options: FetchNotificationOptions): Promise<PlatformNotification | undefined>;
+/**
+ * Awaits a notification promise, showing a loading spinner if the fetch
+ * takes longer than 200ms. The spinner is replaced by the notification
+ * content, or removed cleanly if there's nothing to show.
+ */
+export declare function awaitAndDisplayPlatformNotification(notificationPromise: Promise<PlatformNotification | undefined> | undefined): Promise<void>;
+export {};

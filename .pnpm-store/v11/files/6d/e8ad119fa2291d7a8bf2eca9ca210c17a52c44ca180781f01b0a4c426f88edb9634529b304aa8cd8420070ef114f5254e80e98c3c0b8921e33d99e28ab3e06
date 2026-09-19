@@ -1,0 +1,9 @@
+/** Build the import-env-vars body. Omit `isSecret` unless `--secret` so an existing secret is not demoted. */
+export function buildEnvSetImportBody(name, value, secret) {
+    return {
+        variables: { [name]: value },
+        override: true,
+        ...(secret ? { isSecret: true } : {}),
+    };
+}
+//# sourceMappingURL=envSet.js.map

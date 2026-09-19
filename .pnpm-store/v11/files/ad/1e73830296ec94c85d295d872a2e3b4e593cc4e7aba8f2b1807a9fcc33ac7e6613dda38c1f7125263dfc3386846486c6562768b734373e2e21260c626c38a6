@@ -1,0 +1,4 @@
+export declare const Version: string;
+declare global {
+    const __PACKAGE_VERSION__: string;
+}

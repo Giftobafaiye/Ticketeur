@@ -1,0 +1,8 @@
+export const SCHEDULE_PLAN_LIMIT_HEADER = "Free plan limited to hourly schedules or less";
+export class SchedulePlanLimitError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "SchedulePlanLimitError";
+    }
+}
+//# sourceMappingURL=errors.js.map

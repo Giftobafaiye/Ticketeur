@@ -1,0 +1,35 @@
+import type { Command } from "commander";
+import { z } from "zod";
+export declare const RunsCommonOptions: z.ZodObject<{
+    apiUrl: z.ZodOptional<z.ZodString>;
+    logLevel: z.ZodDefault<z.ZodEnum<{
+        debug: "debug";
+        error: "error";
+        info: "info";
+        log: "log";
+        none: "none";
+        warn: "warn";
+    }>>;
+    skipTelemetry: z.ZodDefault<z.ZodBoolean>;
+    profile: z.ZodDefault<z.ZodString>;
+    config: z.ZodOptional<z.ZodString>;
+    projectRef: z.ZodOptional<z.ZodString>;
+    env: z.ZodDefault<z.ZodEnum<{
+        dev: "dev";
+        preview: "preview";
+        prod: "prod";
+        production: "production";
+        staging: "staging";
+    }>>;
+    branch: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+export type RunsCommonOptions = z.infer<typeof RunsCommonOptions>;
+export declare function runsOptions(command: Command): Command;
+/** Resolves the project + environment and returns a core API client scoped to it. */
+export declare function resolveRunsClient(options: RunsCommonOptions): Promise<{
+    apiClient: import("@trigger.dev/core/v3").ApiClient;
+    projectRef: string;
+    env: "dev" | "preview" | "prod" | "staging";
+    branch: string | undefined;
+}>;
+export declare function formatEnvInfo(env: string, branch: string | undefined): string;

@@ -1,0 +1,8 @@
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const Version = "0.4.1";
+typeof self !== "undefined" && typeof globalThis.WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+const isEdgeRuntime = globalThis.EdgeRuntime ? true : false;
+exports.Version = Version;
+exports.isEdgeRuntime = isEdgeRuntime;
+//# sourceMappingURL=runtime.cjs.map

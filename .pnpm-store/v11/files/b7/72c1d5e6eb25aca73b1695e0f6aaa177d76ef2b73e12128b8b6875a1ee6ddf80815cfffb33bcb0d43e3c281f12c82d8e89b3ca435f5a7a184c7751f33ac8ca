@@ -1,0 +1,12 @@
+import { logger } from "../utilities/logger.js";
+export function logBuildWorkerStart(options) {
+    logger.debug("Starting buildWorker", {
+        target: options.target,
+        hasBranch: options.branch !== undefined,
+        envVarCount: Object.keys(options.envVars ?? {}).length,
+        rewritePaths: options.rewritePaths ?? false,
+        forcedExternalsCount: options.forcedExternals?.length ?? 0,
+        plain: options.plain ?? false,
+    });
+}
+//# sourceMappingURL=buildWorkerLogging.js.map

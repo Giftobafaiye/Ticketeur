@@ -1,0 +1,35 @@
+import { Logger, LogLevel } from '@axiomhq/logging';
+import { ServerContextFields } from './context.cjs';
+import { NextRequest, NextResponse } from 'next/server';
+export type NextHandler<T = Request, A = any, R extends Response = Response> = (req: T extends Request ? T : Request, arg?: A) => Promise<R> | Promise<NextResponse> | NextResponse | R;
+export declare const transformRouteHandlerSuccessResult: (data: SuccessData) => [message: string, report: Record<string | symbol, any>];
+export declare const transformRouteHandlerErrorResult: (data: ErrorData) => [message: string, report: Record<string | symbol, any>];
+export interface BaseData<T = Request> {
+    req: T extends Request ? T : Request;
+    start: number;
+    end: number;
+}
+export interface SuccessData<T = Request, R extends Response = Response> extends BaseData<T> {
+    res: R;
+}
+export interface ErrorData<T = Request> extends BaseData<T> {
+    error: Error | unknown;
+}
+export type AxiomHandlerCallbackParams<T = Request, R extends Response = Response> = {
+    ok: true;
+    data: SuccessData<T, R>;
+} | {
+    ok: false;
+    data: ErrorData<T>;
+};
+export type axiomHandlerCallback<T = Request, R extends Response = Response> = (result: AxiomHandlerCallbackParams<T, R>) => void | Promise<void>;
+export declare const getNextErrorStatusCode: (error: Error & {
+    digest?: string;
+}) => number;
+export declare const getLogLevelFromStatusCode: (statusCode: number) => LogLevel;
+export declare const defaultRouteHandlerOnSuccess: (logger: Logger, data: SuccessData) => Promise<void>;
+export declare const createAxiomRouteHandler: <TRequestCreateRouteHandler = NextRequest>(logger: Logger, config?: {
+    store?: ServerContextFields | (<TRequestStore = TRequestCreateRouteHandler, C extends any = any>(req: TRequestStore, ctx: C) => ServerContextFields | Promise<ServerContextFields>);
+    onSuccess?: (data: SuccessData) => void;
+    onError?: (data: ErrorData) => void;
+}) => <TRequestRouteHandler = TRequestCreateRouteHandler>(handler: NextHandler<TRequestRouteHandler>) => <C extends any = any>(req: TRequestRouteHandler extends Request ? TRequestRouteHandler : Request, ctx: C) => Promise<any>;

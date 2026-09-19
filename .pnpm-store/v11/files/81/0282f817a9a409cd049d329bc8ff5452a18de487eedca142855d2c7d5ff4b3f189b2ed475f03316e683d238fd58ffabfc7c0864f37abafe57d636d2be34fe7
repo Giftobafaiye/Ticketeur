@@ -1,0 +1,21 @@
+import { appendNextJsAxiomClient } from "./identifier.js";
+const createProxyRouteHandler = (logger) => {
+  appendNextJsAxiomClient(logger);
+  return async (req) => {
+    try {
+      const events = await req.json();
+      events.forEach((event) => {
+        logger.raw(event);
+      });
+      await logger.flush();
+      return new Response(JSON.stringify({ status: "ok" }));
+    } catch (error) {
+      console.error(error);
+      return new Response(JSON.stringify({ status: "error" }), { status: 500 });
+    }
+  };
+};
+export {
+  createProxyRouteHandler
+};
+//# sourceMappingURL=proxyRouteHandler.js.map

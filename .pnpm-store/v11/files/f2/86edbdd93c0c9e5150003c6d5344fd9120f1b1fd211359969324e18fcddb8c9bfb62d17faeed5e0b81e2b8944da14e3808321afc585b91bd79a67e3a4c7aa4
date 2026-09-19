@@ -1,0 +1,48 @@
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const platform = require("./platform.cjs");
+const runtime = require("./runtime.cjs");
+const injectPlatform = (logEvent) => {
+  if (platform.isVercel) {
+    const vercelLogEvent = logEvent;
+    vercelLogEvent.vercel = {
+      environment: platform.getEnv("VERCEL_ENV") ?? platform.environment,
+      region: platform.getEnv("VERCEL_REGION"),
+      deploymentId: platform.getEnv("VERCEL_DEPLOYMENT_ID"),
+      deploymentUrl: platform.getEnv("NEXT_PUBLIC_VERCEL_URL"),
+      project: platform.getEnv("NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL"),
+      source: logEvent.source
+    };
+    vercelLogEvent.git = {
+      commit: platform.getEnv("NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA"),
+      repo: platform.getEnv("NEXT_PUBLIC_VERCEL_GIT_REPO_SLUG"),
+      ref: platform.getEnv("NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF")
+    };
+    return vercelLogEvent;
+  }
+  if (platform.isNetlify) {
+    const netlifyLogEvent = logEvent;
+    netlifyLogEvent.netlify = {
+      environment: platform.environment,
+      region: runtime.isEdgeRuntime ? platform.getEnv("DENO_REGION") : platform.getEnv("AWS_REGION"),
+      siteId: platform.getEnv("SITE_ID"),
+      buildId: platform.getEnv("BUILD_ID"),
+      context: platform.getEnv("CONTEXT"),
+      deploymentUrl: platform.getEnv("DEPLOYMENT_URL"),
+      deploymentId: runtime.isEdgeRuntime ? platform.getEnv("DENO_DEPLOYMENT_ID") : platform.getEnv("NETLIFY_DEPLOYMENT_ID"),
+      source: logEvent.source
+    };
+    return netlifyLogEvent;
+  }
+  const genericLogEvent = logEvent;
+  genericLogEvent.platform = {
+    environment: platform.environment,
+    region: platform.region,
+    source: logEvent.source
+  };
+  return genericLogEvent;
+};
+const defaultFormatters = [injectPlatform];
+exports.defaultFormatters = defaultFormatters;
+exports.injectPlatform = injectPlatform;
+//# sourceMappingURL=default-formatters.cjs.map

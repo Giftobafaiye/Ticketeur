@@ -1,0 +1,2 @@
+import { NextRequest } from 'next/server';
+export declare const transformMiddlewareRequest: (request: NextRequest | Request) => [message: string, report: Record<string | symbol, any>];

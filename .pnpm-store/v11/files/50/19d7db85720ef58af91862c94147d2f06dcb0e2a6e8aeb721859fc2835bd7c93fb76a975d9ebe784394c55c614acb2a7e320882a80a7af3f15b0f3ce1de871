@@ -1,0 +1,173 @@
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const logging = require("@axiomhq/logging");
+const next = require("next/server");
+const storage = require("./context/storage.cjs");
+const nextHttpErrors = require("./lib/next-http-errors.cjs");
+const nextRedirectErrors = require("./lib/next-redirect-errors.cjs");
+const runtime = require("./lib/runtime.cjs");
+const identifier = require("./identifier.cjs");
+function _interopNamespaceDefault(e) {
+  const n = Object.create(null, { [Symbol.toStringTag]: { value: "Module" } });
+  if (e) {
+    for (const k in e) {
+      if (k !== "default") {
+        const d = Object.getOwnPropertyDescriptor(e, k);
+        Object.defineProperty(n, k, d.get ? d : {
+          enumerable: true,
+          get: () => e[k]
+        });
+      }
+    }
+  }
+  n.default = e;
+  return Object.freeze(n);
+}
+const next__namespace = /* @__PURE__ */ _interopNamespaceDefault(next);
+const AFTER = "after";
+const after = AFTER in next__namespace ? next__namespace[AFTER] : void 0;
+const transformRouteHandlerSuccessResult = (data) => {
+  const request = {
+    startTime: data.start,
+    endTime: data.end,
+    path: "nextUrl" in data.req ? data.req.nextUrl.pathname : new URL(data.req.url).pathname,
+    method: data.req.method,
+    host: data.req.headers.get("host"),
+    userAgent: data.req.headers.get("user-agent"),
+    scheme: data.req.url.split("://")[0],
+    ip: data.req.headers.get("x-forwarded-for"),
+    region: "geo" in data.req ? data.req.geo.region ?? void 0 : void 0,
+    statusCode: data.res.status
+  };
+  const report = {
+    [logging.EVENT]: { request, source: runtime.isEdgeRuntime ? "edge" : "lambda" }
+  };
+  return [
+    `${request.method} ${request.path} ${request.statusCode} in ${request.endTime - request.startTime}ms`,
+    report
+  ];
+};
+const transformRouteHandlerErrorResult = (data) => {
+  const statusCode = data.error instanceof Error ? getNextErrorStatusCode(data.error) : 500;
+  const request = {
+    startTime: data.start,
+    endTime: data.end,
+    path: "nextUrl" in data.req ? data.req.nextUrl.pathname : new URL(data.req.url).pathname,
+    method: data.req.method,
+    host: data.req.headers.get("host"),
+    userAgent: data.req.headers.get("user-agent"),
+    scheme: data.req.url.split("://")[0],
+    ip: data.req.headers.get("x-forwarded-for"),
+    region: "geo" in data.req ? data.req.geo.region ?? "" : "",
+    statusCode
+  };
+  const report = {
+    [logging.EVENT]: { request, source: runtime.isEdgeRuntime ? "edge" : "lambda" }
+  };
+  return [
+    `${request.method} ${request.path} ${request.statusCode} in ${request.endTime - request.startTime}ms`,
+    report
+  ];
+};
+const getNextErrorStatusCode = (error) => {
+  if (nextRedirectErrors.isRedirectError(error)) {
+    return nextRedirectErrors.getRedirectStatus(error);
+  } else if (nextHttpErrors.isHTTPAccessFallbackError(error)) {
+    return nextHttpErrors.getAccessFallbackHTTPStatus(error);
+  }
+  return 500;
+};
+const getLogLevelFromStatusCode = (statusCode) => {
+  if (statusCode >= 300 && statusCode < 400) {
+    return logging.LogLevel.info;
+  } else if (statusCode >= 400 && statusCode < 500) {
+    return logging.LogLevel.warn;
+  }
+  return logging.LogLevel.error;
+};
+const defaultRouteHandlerOnSuccess = async (logger, data) => {
+  logger.info(...transformRouteHandlerSuccessResult(data));
+  await logger.flush();
+};
+const defaultRouteHandlerOnError = async (logger, data) => {
+  if (data.error instanceof Error) {
+    logger.error(data.error.message, data.error);
+  }
+  const [message, report] = transformRouteHandlerErrorResult(data);
+  logger.log(getLogLevelFromStatusCode(report.statusCsode), message, report);
+  await logger.flush();
+};
+const getStore = async ({
+  store,
+  req,
+  ctx
+}) => {
+  if (!store) {
+    const newStore = /* @__PURE__ */ new Map();
+    newStore.set("request_id", globalThis.crypto.randomUUID());
+    newStore.set("source", runtime.isEdgeRuntime ? "edge" : "lambda");
+    return newStore;
+  }
+  if (typeof store === "function") {
+    return await store(req, ctx);
+  }
+  if (store instanceof Map) {
+    store.set(logging.EVENT, { source: runtime.isEdgeRuntime ? "edge" : "lambda" });
+  } else {
+    store[logging.EVENT] = { source: runtime.isEdgeRuntime ? "edge" : "lambda" };
+  }
+  return store;
+};
+const createAxiomRouteHandler = (logger, config) => {
+  identifier.appendNextJsAxiomClient(logger);
+  const { store: argStore, onSuccess, onError } = config ?? {};
+  const withAxiom = (handler) => {
+    return async (req, ctx) => {
+      const store = await getStore({ store: argStore, req, ctx });
+      return storage.runWithServerContext(async () => {
+        const start = Date.now();
+        try {
+          const response = await handler(req, ctx);
+          const end = Date.now();
+          const httpData = { req, res: response, start, end };
+          const callbackFn = async () => {
+            if (onSuccess) {
+              onSuccess(httpData);
+            } else {
+              await defaultRouteHandlerOnSuccess(logger, httpData);
+            }
+          };
+          if (typeof after !== "undefined") {
+            after(callbackFn());
+          } else {
+            await callbackFn();
+          }
+          return response;
+        } catch (error) {
+          const end = Date.now();
+          const callbackFn = async () => {
+            if (onError) {
+              onError({ req, error, start, end });
+            } else {
+              defaultRouteHandlerOnError(logger, { req, error, start, end });
+            }
+          };
+          if (typeof after !== "undefined") {
+            after(callbackFn());
+          } else {
+            await callbackFn();
+          }
+          throw error;
+        }
+      }, store);
+    };
+  };
+  return withAxiom;
+};
+exports.createAxiomRouteHandler = createAxiomRouteHandler;
+exports.defaultRouteHandlerOnSuccess = defaultRouteHandlerOnSuccess;
+exports.getLogLevelFromStatusCode = getLogLevelFromStatusCode;
+exports.getNextErrorStatusCode = getNextErrorStatusCode;
+exports.transformRouteHandlerErrorResult = transformRouteHandlerErrorResult;
+exports.transformRouteHandlerSuccessResult = transformRouteHandlerSuccessResult;
+//# sourceMappingURL=routeHandler.cjs.map

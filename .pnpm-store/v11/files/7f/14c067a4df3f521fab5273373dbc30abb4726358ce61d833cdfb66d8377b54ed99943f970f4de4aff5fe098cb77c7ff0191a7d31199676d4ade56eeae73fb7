@@ -1,0 +1,3 @@
+import { CliApiClient } from "../../apiClient.js";
+import type { CommonCommandOptions } from "../../cli/common.js";
+export declare function getPatApiClient(options: CommonCommandOptions): Promise<CliApiClient>;

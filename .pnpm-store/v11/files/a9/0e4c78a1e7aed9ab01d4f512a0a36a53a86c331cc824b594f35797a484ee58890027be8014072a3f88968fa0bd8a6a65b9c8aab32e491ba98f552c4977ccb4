@@ -1,0 +1,16 @@
+{
+  "node": {
+    "00f5feaf4bd20777acc35f7f808feb7de6683fe767": {
+      "workers": {
+        "app/page": {
+          "moduleId": 82613,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "exportedName": "getEmailsDirectoryMetadataAction",
+      "filename": "packages/ui/src/actions/get-emails-directory-metadata-action.ts"
+    }
+  },
+  "edge": {}
+}

@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const identifier = require("./identifier.cjs");
+const formatters_client = require("./formatters.client.cjs");
+exports.appendNextJsAxiomClient = identifier.appendNextJsAxiomClient;
+exports.axiomClient = identifier.axiomClient;
+exports.frameworkIdentifier = identifier.frameworkIdentifier;
+exports.frameworkIdentifierFormatter = identifier.frameworkIdentifierFormatter;
+exports.nextJsFormatters = formatters_client.nextJsFormatters;
+//# sourceMappingURL=index.client.cjs.map

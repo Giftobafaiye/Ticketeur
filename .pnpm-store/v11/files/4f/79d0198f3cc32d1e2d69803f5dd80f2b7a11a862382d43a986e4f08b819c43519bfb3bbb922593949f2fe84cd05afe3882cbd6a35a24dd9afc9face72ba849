@@ -1,0 +1,6 @@
+import { Logger } from '@axiomhq/logging';
+import { Metric } from 'web-vitals';
+import * as React from 'react';
+export declare function useReportWebVitals(pushMetrics: (metric: Metric) => void, flushMetrics: () => void): void;
+export declare const transformWebVitalsMetric: (metric: Metric) => Record<string, any>;
+export declare const createWebVitalsComponent: (logger: Logger) => () => React.JSX.Element;

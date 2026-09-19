@@ -1,0 +1,27 @@
+"use client";
+import { n as createAdapterProvider } from "../context-Mu913OAK.js";
+import { n as useNuqsNextAppRouterAdapter } from "../impl.app-Bj58WfFP.js";
+import { n as isPagesRouter, r as useNuqsNextPagesRouterAdapter, t as NavigationSpy } from "../impl.pages-CZFUzBFr.js";
+import { createElement } from "react";
+//#region src/adapters/next.ts
+function useNuqsNextAdapter() {
+	const pagesRouterImpl = useNuqsNextPagesRouterAdapter();
+	const appRouterImpl = useNuqsNextAppRouterAdapter();
+	return {
+		searchParams: appRouterImpl.searchParams,
+		updateUrl(search, options) {
+			if (isPagesRouter()) return pagesRouterImpl.updateUrl(search, options);
+			else return appRouterImpl.updateUrl(search, options);
+		},
+		autoResetQueueOnUpdate: false
+	};
+}
+const Provider = createAdapterProvider(useNuqsNextAdapter);
+const NuqsAdapter = ({ children, ...adapterProps }) => createElement(Provider, {
+	...adapterProps,
+	children: [createElement(NavigationSpy, { key: "nuqs-adapter-navigation-spy" }), children]
+});
+//#endregion
+export { NuqsAdapter };
+
+//# sourceMappingURL=next.js.map

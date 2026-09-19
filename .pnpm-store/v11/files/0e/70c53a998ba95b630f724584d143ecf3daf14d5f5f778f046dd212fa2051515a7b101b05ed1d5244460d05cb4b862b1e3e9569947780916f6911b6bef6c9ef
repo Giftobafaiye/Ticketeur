@@ -1,0 +1,24 @@
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const runtime = require("./lib/runtime.cjs");
+const frameworkIdentifier = {
+  name: "next-axiom-version",
+  version: runtime.Version
+};
+const axiomClient = `axiom-nextjs/${runtime.Version}`;
+const appendNextJsAxiomClient = (logger) => {
+  logger.appendAxiomClient?.(axiomClient);
+};
+const frameworkIdentifierFormatter = (logEvent) => {
+  return {
+    ...logEvent,
+    "@app": {
+      [frameworkIdentifier.name]: frameworkIdentifier.version
+    }
+  };
+};
+exports.appendNextJsAxiomClient = appendNextJsAxiomClient;
+exports.axiomClient = axiomClient;
+exports.frameworkIdentifier = frameworkIdentifier;
+exports.frameworkIdentifierFormatter = frameworkIdentifierFormatter;
+//# sourceMappingURL=identifier.cjs.map

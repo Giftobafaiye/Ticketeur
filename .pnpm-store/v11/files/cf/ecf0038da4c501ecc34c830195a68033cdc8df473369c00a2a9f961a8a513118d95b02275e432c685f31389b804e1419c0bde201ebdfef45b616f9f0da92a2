@@ -1,0 +1,8 @@
+/** Object containing hyperlink support status for stdout and stderr. */
+declare const supportsHyperlinks: {
+    /** Whether stdout supports hyperlinks. */
+    stdout: boolean;
+    /** Whether stderr supports hyperlinks. */
+    stderr: boolean;
+};
+export default supportsHyperlinks;

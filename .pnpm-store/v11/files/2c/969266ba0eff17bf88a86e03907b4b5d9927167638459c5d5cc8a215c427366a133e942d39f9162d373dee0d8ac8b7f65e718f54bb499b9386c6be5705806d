@@ -1,0 +1,21 @@
+import { Version } from "./lib/runtime.js";
+const frameworkIdentifier = {
+  name: "react-axiom-version",
+  version: Version
+};
+const axiomClient = `axiom-react/${Version}`;
+const frameworkIdentifierFormatter = (logEvent) => {
+  return {
+    ...logEvent,
+    "@app": {
+      ...logEvent["@app"],
+      [frameworkIdentifier.name]: frameworkIdentifier.version
+    }
+  };
+};
+export {
+  axiomClient,
+  frameworkIdentifier,
+  frameworkIdentifierFormatter
+};
+//# sourceMappingURL=identifier.js.map

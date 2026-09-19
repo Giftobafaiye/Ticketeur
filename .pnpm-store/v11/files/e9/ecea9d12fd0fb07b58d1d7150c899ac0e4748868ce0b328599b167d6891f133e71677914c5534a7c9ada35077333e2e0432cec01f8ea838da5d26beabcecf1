@@ -1,0 +1,2 @@
+import { Logger } from '@axiomhq/logging';
+export declare const createProxyRouteHandler: (logger: Logger) => <T extends Request>(req: T) => Promise<Response>;

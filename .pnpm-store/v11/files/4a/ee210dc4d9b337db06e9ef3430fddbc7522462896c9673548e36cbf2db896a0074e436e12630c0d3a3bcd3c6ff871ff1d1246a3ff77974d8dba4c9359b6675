@@ -1,0 +1,34 @@
+import { Transport } from './transport.js';
+import { LogLevel } from '../logger.js';
+interface FetchConfig {
+    input: Parameters<typeof fetch>[0];
+    init?: Omit<NonNullable<Parameters<typeof fetch>[1]>, 'body'>;
+    autoFlush?: boolean | {
+        durationMs: number;
+    };
+    logLevel?: LogLevel;
+}
+export declare class SimpleFetchTransport implements Transport {
+    private fetchConfig;
+    private events;
+    private timer;
+    private flushing;
+    private inFlight;
+    private sequence;
+    private requestedThrough;
+    private waiters;
+    private retryAfterUntil;
+    private lastWarningAt;
+    private dropped;
+    constructor(config: FetchConfig);
+    log: Transport['log'];
+    /** Wait for events accepted before this call to be sent or explicitly dropped. */
+    flush(): Promise<void>;
+    private oldestOutstanding;
+    private settleWaiters;
+    private drain;
+    /** One retry, sharing a deadline with the first attempt and any backoff. */
+    private sendBatch;
+    private reportDrop;
+}
+export {};

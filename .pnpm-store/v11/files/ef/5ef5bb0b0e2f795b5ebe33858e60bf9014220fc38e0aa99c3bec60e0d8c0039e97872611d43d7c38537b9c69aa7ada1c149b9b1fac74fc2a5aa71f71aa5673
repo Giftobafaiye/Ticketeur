@@ -1,0 +1,27 @@
+import type { Command } from "commander";
+import { z } from "zod";
+export declare const CommonCommandOptions: z.ZodObject<{
+    apiUrl: z.ZodOptional<z.ZodString>;
+    logLevel: z.ZodDefault<z.ZodEnum<{
+        debug: "debug";
+        error: "error";
+        info: "info";
+        log: "log";
+        none: "none";
+        warn: "warn";
+    }>>;
+    skipTelemetry: z.ZodDefault<z.ZodBoolean>;
+    profile: z.ZodDefault<z.ZodString>;
+}, z.core.$strip>;
+export type CommonCommandOptions = z.infer<typeof CommonCommandOptions>;
+export declare function commonOptions(command: Command): Command;
+export declare class SkipLoggingError extends Error {
+}
+export declare class SkipCommandError extends Error {
+}
+export declare class OutroCommandError extends SkipCommandError {
+}
+export declare function handleTelemetry(action: () => Promise<void>): Promise<void>;
+export declare function wrapCommandAction<T extends z.ZodObject<any>, TResult>(name: string, schema: T, options: unknown, action: (opts: z.output<T>) => Promise<TResult>): Promise<TResult | undefined>;
+export declare const tracer: import("@opentelemetry/api").Tracer;
+export declare function installExitHandler(): void;

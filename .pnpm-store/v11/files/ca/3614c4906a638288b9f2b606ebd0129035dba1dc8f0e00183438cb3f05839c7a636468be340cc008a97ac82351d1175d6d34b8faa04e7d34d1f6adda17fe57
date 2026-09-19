@@ -1,0 +1,35 @@
+import type { DeployBuildPath, GetDeploySettingsResponseBody } from "@trigger.dev/core/v3/schemas";
+export type BuildPathOptions = {
+    nativeBuildServer: boolean;
+    localBundle: boolean;
+    detach: boolean;
+    dryRun: boolean;
+};
+export declare function nativeOnlyFlagError(options: BuildPathOptions): string | undefined;
+export declare function applyBuildPathOptions(resolved: DeployBuildPath, options: BuildPathOptions): DeployBuildPath;
+export type BuildPathFlags = {
+    nativeBuildServer?: boolean;
+    depotBuild?: boolean;
+    localBuild?: boolean;
+};
+export type DeploySettingsResult = {
+    success: true;
+    data: GetDeploySettingsResponseBody;
+} | {
+    success: false;
+    statusCode?: number;
+};
+export type ResolvedBuildPath = {
+    buildPath: DeployBuildPath;
+    from: "flag";
+    flag: string;
+} | {
+    buildPath: DeployBuildPath;
+    from: "server";
+} | {
+    buildPath: "depot";
+    from: "fallback";
+    silent: boolean;
+    failure: unknown;
+};
+export declare function resolveBuildPath(options: BuildPathFlags, fetchSettings: () => Promise<DeploySettingsResult>): Promise<ResolvedBuildPath>;

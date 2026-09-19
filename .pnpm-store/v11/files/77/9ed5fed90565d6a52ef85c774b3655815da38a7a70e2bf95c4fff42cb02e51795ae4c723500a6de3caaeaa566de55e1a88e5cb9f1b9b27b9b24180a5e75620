@@ -1,0 +1,93 @@
+{
+  "node": {
+    "00f5feaf4bd20777acc35f7f808feb7de6683fe767": {
+      "workers": {
+        "app/preview/[...slug]/page": {
+          "moduleId": 37120,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "exportedName": "getEmailsDirectoryMetadataAction",
+      "filename": "packages/ui/src/actions/get-emails-directory-metadata-action.ts"
+    },
+    "6004db2cc26f44ad9f92a210c1b4af612118474849": {
+      "workers": {
+        "app/preview/[...slug]/page": {
+          "moduleId": 37120,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "exportedName": "checkCompatibility",
+      "filename": "packages/ui/src/actions/email-validation/check-compatibility.ts"
+    },
+    "7f5e0382b8f0629287ec775b02676251e27baafd51": {
+      "workers": {
+        "app/preview/[...slug]/page": {
+          "moduleId": 37120,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "exportedName": "getEmailPathFromSlug",
+      "filename": "packages/ui/src/actions/get-email-path-from-slug.ts"
+    },
+    "40cfbfc7564a16c74e31c7ac4fc1b53974ba32a7d4": {
+      "workers": {
+        "app/preview/[...slug]/page": {
+          "moduleId": 37120,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "exportedName": "invalidateEmailRenderingCache",
+      "filename": "packages/ui/src/actions/render-email-by-path.tsx"
+    },
+    "7080a816555802d44b8bb664bc7d22de494ef4cf3c": {
+      "workers": {
+        "app/preview/[...slug]/page": {
+          "moduleId": 37120,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "exportedName": "renderEmailByPath",
+      "filename": "packages/ui/src/actions/render-email-by-path.tsx"
+    },
+    "60e115d2834e3f4b8b0720b2ca398d0eaafb9e524e": {
+      "workers": {
+        "app/preview/[...slug]/page": {
+          "moduleId": 37120,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "exportedName": "checkImages",
+      "filename": "packages/ui/src/actions/email-validation/check-images.ts"
+    },
+    "4015537fd55c556c52968c948b2cbbcce35ca709f5": {
+      "workers": {
+        "app/preview/[...slug]/page": {
+          "moduleId": 37120,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "exportedName": "checkLinks",
+      "filename": "packages/ui/src/actions/email-validation/check-links.ts"
+    },
+    "7fa6a3524a86adbda95d52656d4364ac0ce68246dd": {
+      "workers": {
+        "app/preview/[...slug]/page": {
+          "moduleId": 37120,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "exportedName": "exportSingleTemplate",
+      "filename": "packages/ui/src/actions/export-single-template.ts"
+    }
+  },
+  "edge": {}
+}

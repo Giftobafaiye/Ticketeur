@@ -1,0 +1,23 @@
+{
+  "name": "@depot/cli-linux-x64",
+  "version": "0.0.1-cli.2.80.0",
+  "description": "The Linux Intel 64-bit binary for @depot/cli.",
+  "repository": "https://github.com/depot/cli",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14"
+  },
+  "cpu": [
+    "x64"
+  ],
+  "os": [
+    "linux"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "executableFiles": [
+      "./bin/depot"
+    ]
+  },
+  "preferUnplugged": true
+}

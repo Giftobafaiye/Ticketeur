@@ -1,0 +1,14 @@
+import { LogLevel } from '../logger.cjs';
+import { Transport } from './transport.cjs';
+import { SimpleFetchTransport } from './fetch.cjs';
+interface ProxyTransportConfig {
+    url: string;
+    autoFlush?: boolean | {
+        durationMs: number;
+    };
+    logLevel?: LogLevel;
+}
+export declare class ProxyTransport extends SimpleFetchTransport implements Transport {
+    constructor(config: ProxyTransportConfig);
+}
+export {};

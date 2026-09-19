@@ -1,0 +1,4 @@
+export function resolveDeploymentRuntime({ configuredRuntime, runtimeWasExplicit, projectDefaultRuntime, }) {
+    return !runtimeWasExplicit && projectDefaultRuntime ? projectDefaultRuntime : configuredRuntime;
+}
+//# sourceMappingURL=runtime.js.map

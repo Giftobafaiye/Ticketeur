@@ -1,0 +1,24 @@
+import { Version } from "./lib/runtime.js";
+const frameworkIdentifier = {
+  name: "next-axiom-version",
+  version: Version
+};
+const axiomClient = `axiom-nextjs/${Version}`;
+const appendNextJsAxiomClient = (logger) => {
+  logger.appendAxiomClient?.(axiomClient);
+};
+const frameworkIdentifierFormatter = (logEvent) => {
+  return {
+    ...logEvent,
+    "@app": {
+      [frameworkIdentifier.name]: frameworkIdentifier.version
+    }
+  };
+};
+export {
+  appendNextJsAxiomClient,
+  axiomClient,
+  frameworkIdentifier,
+  frameworkIdentifierFormatter
+};
+//# sourceMappingURL=identifier.js.map

@@ -1,0 +1,20 @@
+import { CLOUD_API_URL } from "../consts.js";
+/**
+ * Map parsed CLI options onto the `McpContext` options. `devOnly` must be
+ * forwarded here or the context sees `undefined` and its dev-only guards
+ * never fire.
+ *
+ * Kept in its own module (type-only imports) so the wiring can be
+ * unit-tested without loading the full command/tool/build chain.
+ */
+export function toMcpContextOptions(options, fileLogger) {
+    return {
+        projectRef: options.projectRef,
+        fileLogger,
+        apiUrl: options.apiUrl ?? CLOUD_API_URL,
+        profile: options.profile,
+        readonly: options.readonly,
+        devOnly: options.devOnly,
+    };
+}
+//# sourceMappingURL=contextOptions.js.map

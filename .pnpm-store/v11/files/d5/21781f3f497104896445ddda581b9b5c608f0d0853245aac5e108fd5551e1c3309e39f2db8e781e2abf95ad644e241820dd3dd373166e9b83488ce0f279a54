@@ -1,0 +1,761 @@
+import { annotations } from './annotations.js';
+import { dashboards } from './dashboards.js';
+import { datasets } from './datasets.js';
+import { monitors } from './monitors.js';
+import { savedQueries } from './savedQueries.js';
+import { users } from './users.js';
+import { Batch, createBatchKey } from './batch.js';
+import HTTPClient, { ClientOptions, resolveAplQueryUrl, resolveIngestUrl, resolveMplQueryUrl } from './httpClient.js';
+import { isAxiomPersonalToken } from './token.js';
+
+class BaseClient extends HTTPClient {
+  annotations: annotations.Service;
+  dashboards: dashboards.Service;
+  datasets: datasets.Service;
+  monitors: monitors.Service;
+  savedQueries: savedQueries.Service;
+  users: users.Service;
+  localPath = '/v1';
+  onError = console.error;
+
+  constructor(options: ClientOptions) {
+    if (options.token && isAxiomPersonalToken(options.token)) {
+      console.warn(
+        'Using a personal token (`xapt-...`) is deprecated for security reasons. Please use an API token (`xaat-...`) instead. Support for personal tokens will be removed in a future release.',
+      );
+    }
+
+    super(options);
+    this.annotations = new annotations.Service(options);
+    this.dashboards = new dashboards.Service(options);
+    this.datasets = new datasets.Service(options);
+    this.monitors = new monitors.Service(options);
+    this.savedQueries = new savedQueries.Service(options);
+    this.users = new users.Service(options);
+    this.query = this.query.bind(this); // bind `this` so method uses client state when passed around
+    this.aplQuery = this.aplQuery.bind(this); // bind `this` so method uses client state when passed around
+    if (options.onError) {
+      this.onError = options.onError;
+    }
+  }
+
+  // Services create their own HTTPClient instances, so appending after construction
+  // must update the base client and each mounted service client.
+  appendAxiomClient = (axiomClient: string) => {
+    super.appendAxiomClient(axiomClient);
+    this.annotations.appendAxiomClient(axiomClient);
+    this.dashboards.appendAxiomClient(axiomClient);
+    this.datasets.appendAxiomClient(axiomClient);
+    this.monitors.appendAxiomClient(axiomClient);
+    this.savedQueries.appendAxiomClient(axiomClient);
+    this.users.appendAxiomClient(axiomClient);
+  };
+
+  /**
+   * Ingest events into the provided dataset using raw data types, e.g: string, buffer or a stream.
+   *
+   * @param dataset - name of the dataset to ingest events into
+   * @param data - data to be ingested
+   * @param contentType - optional content type, defaults to JSON
+   * @param contentEncoding - optional content encoding, defaults to Auto
+   * @param options - optional ingest options
+   * @returns result a promise of ingest and its status, check: {@link IngestStatus}
+   * @example
+   * ```
+   * import { AxiomWithoutBatching } from '@axiomhq/js';
+   *
+   * const axiom = new AxiomWithoutBatching();
+   * ```
+   *
+   */
+  ingestRaw = async (
+    dataset: string,
+    data: string | Buffer | Uint8Array | ReadableStream,
+    contentType: ContentType = ContentType.JSON,
+    contentEncoding: ContentEncoding = ContentEncoding.Auto,
+    options?: IngestOptions,
+  ): Promise<IngestStatus> => {
+    try {
+      const encoded = await this.encodeIngestPayload(data, contentEncoding);
+      const ingestUrl = resolveIngestUrl(this.clientOptions, dataset);
+      return await this.client.post<IngestStatus>(
+        ingestUrl,
+        {
+          headers: {
+            'Content-Type': contentType,
+            'Content-Encoding': encoded.contentEncoding,
+          },
+          body: encoded.data,
+        },
+        {
+          'timestamp-field': options?.timestampField as string,
+          'timestamp-format': options?.timestampFormat as string,
+          'csv-delimiter': options?.csvDelimiter as string,
+        },
+        undefined, // use default timeout
+        true, // useAbsoluteUrl
+      );
+    } catch (err) {
+      this.onError(err);
+      return await Promise.resolve({
+        ingested: 0,
+        failed: 0,
+        processedBytes: 0,
+        blocksCreated: 0,
+        walLength: 0,
+      });
+    }
+  };
+
+  protected encodeIngestPayload = async (
+    data: string | Buffer | Uint8Array | ReadableStream,
+    contentEncoding: ContentEncoding,
+  ): Promise<{ data: string | Buffer | Uint8Array | ReadableStream; contentEncoding: ContentEncoding }> => {
+    if (contentEncoding !== ContentEncoding.Auto) {
+      return { data, contentEncoding };
+    }
+
+    if (typeof CompressionStream === 'undefined') {
+      return { data, contentEncoding: ContentEncoding.Identity };
+    }
+
+    try {
+      const source = this.resolveCompressionSource(data);
+      if (!source) {
+        return { data, contentEncoding: ContentEncoding.Identity };
+      }
+      const stream = source.pipeThrough(new CompressionStream('gzip'));
+      const compressed = new Uint8Array(await new Response(stream).arrayBuffer());
+      return { data: compressed, contentEncoding: ContentEncoding.GZIP };
+    } catch (err) {
+      this.onError(err as Error);
+      return { data, contentEncoding: ContentEncoding.Identity };
+    }
+  };
+
+  protected resolveCompressionSource = (data: string | Buffer | Uint8Array | ReadableStream): ReadableStream | null => {
+    if (typeof ReadableStream !== 'undefined' && data instanceof ReadableStream) {
+      return data;
+    }
+
+    if (this.isAsyncIterable(data)) {
+      return new ReadableStream({
+        start: async (controller) => {
+          for await (const chunk of data) {
+            controller.enqueue(this.normalizeChunk(chunk));
+          }
+          controller.close();
+        },
+      });
+    }
+
+    if (typeof data === 'string' || data instanceof Uint8Array) {
+      return new Blob([data]).stream();
+    }
+
+    return null;
+  };
+
+  protected isAsyncIterable = (value: unknown): value is AsyncIterable<unknown> => {
+    return (
+      value !== null &&
+      typeof value === 'object' &&
+      Symbol.asyncIterator in value &&
+      typeof (value as AsyncIterable<unknown>)[Symbol.asyncIterator] === 'function'
+    );
+  };
+
+  protected normalizeChunk = (chunk: unknown): Uint8Array => {
+    if (chunk instanceof Uint8Array) {
+      return chunk;
+    }
+
+    if (chunk instanceof ArrayBuffer) {
+      return new Uint8Array(chunk);
+    }
+
+    if (typeof chunk === 'string') {
+      return new TextEncoder().encode(chunk);
+    }
+
+    return new TextEncoder().encode(String(chunk));
+  };
+
+  /**
+   * Executes a legacy dataset query against the provided dataset.
+   *
+   * @param dataset - name of the dataset to query
+   * @param query - legacy query request
+   * @param options - optional query options
+   * @returns Promise<QueryLegacyResult>
+   * @see https://axiom.co/docs/restapi/endpoints/queryDataset
+   */
+  queryLegacy = (dataset: string, query: QueryLegacy, options?: QueryOptions): Promise<QueryLegacyResult> =>
+    this.client.post(
+      this.localPath + '/datasets/' + dataset + '/query',
+      {
+        body: JSON.stringify(query),
+      },
+      {
+        'streaming-duration': options?.streamingDuration as string,
+        nocache: options?.noCache as boolean,
+      },
+      120_000,
+    );
+
+  /**
+   * Executes an APL or MPL query and returns the result.
+   *
+   * @param query - the APL or MPL query
+   * @param options - optional query options
+   * @returns result of the query depending on the format in options, check: {@link QueryResult} and {@link TabularQueryResult}
+   * @see https://axiom.co/docs/restapi/endpoints/queryApl
+   * @see https://axiom.co/docs/restapi/endpoints/queryMetrics
+   *
+   * @example
+   * ```
+   * await axiom.query("['dataset'] | count");
+   * ```
+   *
+   */
+  query(apl: string, options: QueryOptions & { format: 'legacy' }): Promise<QueryResult>;
+  query(apl: string, options: QueryOptions & { format: 'tabular' }): Promise<TabularQueryResult>;
+  query(apl: string, options?: QueryOptions & { format?: undefined }): Promise<TabularQueryResult>;
+  query(apl: string, options: QueryOptions): Promise<QueryResult | TabularQueryResult>;
+  query(mpl: string, options: MetricsQueryOptions): Promise<MetricsResult>;
+  query(
+    query: string,
+    options?: QueryOptions | MetricsQueryOptions,
+  ): Promise<QueryResult | TabularQueryResult | MetricsResult> {
+    if (options?.type === 'mpl') {
+      return this.queryMpl(query, options);
+    }
+
+    return this.queryApl(query, options);
+  }
+
+  private queryApl = (
+    apl: string,
+    options?: QueryOptions,
+  ): Promise<QueryResult | TabularQueryResult> => {
+    const req: Query = { apl: apl };
+    const format = options?.format ?? 'tabular';
+    if (options?.startTime) {
+      req.startTime = options?.startTime;
+    }
+    if (options?.endTime) {
+      req.endTime = options?.endTime;
+    }
+
+    return this.client
+      .post<QueryResult | RawTabularQueryResult>(
+        resolveAplQueryUrl(this.clientOptions),
+        {
+          body: JSON.stringify(req),
+        },
+        {
+          'streaming-duration': options?.streamingDuration as string,
+          nocache: options?.noCache as boolean,
+          format,
+          cursor: options?.cursor as string,
+        },
+        120_000,
+        true,
+      )
+      .then((res) => {
+        if (format !== 'tabular') {
+          return res;
+        }
+
+        const result = res as RawTabularQueryResult;
+        return {
+          ...res,
+          tables: result.tables.map((t) => {
+            return {
+              ...t,
+              events: function* () {
+                let iteration = 0;
+                if (!this.columns) {
+                  return;
+                }
+
+                while (iteration <= this.columns[0].length) {
+                  const value = Object.fromEntries(
+                    this.fields.map((field, fieldIdx) => [field.name, this.columns![fieldIdx][iteration]]),
+                  );
+
+                  if (iteration >= this.columns[0].length) {
+                    return value;
+                  }
+
+                  yield value;
+                  iteration++;
+                }
+              },
+            };
+          }),
+        };
+      }) as Promise<QueryResult | TabularQueryResult>;
+  };
+
+  private queryMpl = async (mpl: string, options: MetricsQueryOptions): Promise<MetricsResult> => {
+    const req: MetricsQuery = {
+      mpl,
+      startTime: options.startTime,
+      endTime: options.endTime,
+    };
+
+    const init: RequestInit = {
+      body: JSON.stringify(req),
+    };
+    if (options.accept) {
+      init.headers = {
+        Accept: options.accept,
+      };
+    }
+
+    return this.client.post<MetricsResult>(
+      resolveMplQueryUrl(this.clientOptions, options),
+      init,
+      {
+        format: options.format as string,
+      },
+      120_000,
+      true,
+    );
+  };
+
+  /**
+   * Executes APL query using the provided APL and returns the result.
+   * This is just an alias for the `query()` method, please use that instead.
+   *
+   * @param apl - the apl query
+   * @param options - optional query options
+   * @returns Promise<QueryResult>
+   * @see https://axiom.co/docs/restapi/endpoints/queryApl
+   *
+   * @example
+   * ```
+   * await axiom.aplQuery("['dataset'] | count");
+   * ```
+   */
+  aplQuery(apl: string, options: QueryOptions & { format: 'legacy' }): Promise<QueryResult>;
+  aplQuery(apl: string, options: QueryOptions & { format: 'tabular' }): Promise<TabularQueryResult>;
+  aplQuery(apl: string, options?: QueryOptions & { format?: undefined }): Promise<TabularQueryResult>;
+  aplQuery(apl: string, options: QueryOptions): Promise<QueryResult | TabularQueryResult>;
+  aplQuery(apl: string, options?: QueryOptions): Promise<QueryResult | TabularQueryResult> {
+    return this.queryApl(apl, options);
+  }
+}
+
+/**
+ * Axiom's client without batching events in the background.
+ * In most cases you'll want to use the {@link Axiom} client instead.
+ *
+ *
+ * @param options - The {@link ClientOptions} to configure authentication
+ *
+ */
+export class AxiomWithoutBatching extends BaseClient {
+  /**
+   * Ingest event(s) asynchronously
+   *
+   * @param dataset - name of the dataset to ingest events into
+   * @param events - list of events to be ingested, could be a single object as well
+   * @param options - optional ingest options
+   * @returns the result of the ingest, check: {@link IngestStatus}
+   *
+   * @example
+   * ```
+   * import { AxiomWithoutBatching } from '@axiomhq/js';
+   *
+   * const axiom = new AxiomWithoutBatching();
+   * await axiom.ingest('dataset-name', [{ foo: 'bar' }])
+   * ```
+   *
+   */
+  async ingest(dataset: string, events: Array<object> | object, options?: IngestOptions): Promise<IngestStatus> {
+    const array = Array.isArray(events) ? events : [events];
+    const json = array.map((v) => JSON.stringify(v)).join('\n');
+    return this.ingestRaw(dataset, json, ContentType.NDJSON, ContentEncoding.Auto, options);
+  }
+}
+
+/**
+ * Axiom's default client that queues events in the background,
+ * sends them asynchronously to the server every 1s or every 1000 events.
+ *
+ * @param options - The options passed to the client
+ *
+ */
+export class Axiom extends BaseClient {
+  batch: { [id: string]: Batch } = {};
+
+  /**
+   * Ingest events asynchronously
+   *
+   * @remarks
+   * Events passed to ingest method will be queued in a batch and sent
+   * in the background every second or every 1000 events.
+   *
+   * @param dataset - name of the dataset to ingest events into
+   * @param events - list of events to be ingested, could be a single object as well
+   * @param options - optional ingest options
+   * @returns void, as the events are sent in the background
+   *
+   */
+  ingest = (dataset: string, events: Array<object> | object, options?: IngestOptions) => {
+    const key = createBatchKey(dataset, options);
+    if (!this.batch[key]) {
+      this.batch[key] = new Batch(
+        (dataset, events, options) => {
+          const array = Array.isArray(events) ? events : [events];
+          const json = array.map((v) => JSON.stringify(v)).join('\n');
+          return this.ingestRaw(dataset, json, ContentType.NDJSON, ContentEncoding.Auto, options);
+        },
+        dataset,
+        options,
+        { onError: this.onError },
+      );
+    }
+    return this.batch[key].ingest(events);
+  };
+
+  /**
+   * Flushes all the events that have been queued in the background
+   *
+   * @remarks
+   * calling `await flush()` will wait for all the events to be sent to the server
+   * and is necessary to ensure data delivery.
+   */
+  flush = async (): Promise<void> => {
+    let promises: Array<Promise<IngestStatus | void>> = [];
+    for (const key in this.batch) {
+      promises.push(this.batch[key].flush().catch(this.onError));
+    }
+    await Promise.all(promises).catch(this.onError);
+  };
+}
+
+declare global {
+  interface BigInt {
+    toJSON: () => string;
+  }
+}
+
+BigInt.prototype.toJSON = function () {
+  return this.toString();
+};
+
+export enum ContentType {
+  JSON = 'application/json',
+  NDJSON = 'application/x-ndjson',
+  CSV = 'text/csv',
+}
+
+export enum ContentEncoding {
+  Auto = 'auto',
+  Identity = '',
+  GZIP = 'gzip',
+}
+
+/**
+ * Ingest options
+ *
+ */
+export interface IngestOptions {
+  /**
+   * name of the field that contains the timestamp
+   */
+  timestampField?: string;
+  /**
+   * format of the timestamp
+   */
+  timestampFormat?: string;
+  /**
+   * delimiter used in the csv file
+   */
+  csvDelimiter?: string;
+}
+
+/**
+ * Query result
+ *
+ */
+export interface IngestStatus {
+  /**
+   * number of ingested events
+   */
+  ingested: number;
+  /**
+   * number of failed events
+   */
+  failed: number;
+  /**
+   * list of failed events
+   */
+  failures?: Array<IngestFailure>;
+  /**
+   * number of processed bytes
+   */
+  processedBytes: number;
+  /**
+   * number of blocks created
+   */
+  blocksCreated: number;
+  /**
+   * length of the write ahead log
+   */
+  walLength: number;
+}
+
+export interface IngestFailure {
+  timestamp: string;
+  error: string;
+}
+
+export interface QueryOptionsBase {
+  streamingDuration?: string;
+  noCache?: boolean;
+}
+
+export interface QueryOptions extends QueryOptionsBase {
+  type?: 'apl';
+  startTime?: string;
+  endTime?: string;
+  format?: 'legacy' | 'tabular';
+  cursor?: string;
+}
+
+export interface MetricsQueryOptions {
+  type: 'mpl';
+  startTime: string;
+  endTime: string;
+  format?: 'metrics-v1' | 'metrics-v2';
+  accept?: string;
+  edge?: string;
+  edgeUrl?: string;
+  edgeDeployment?: string | null;
+}
+
+export type MetricsResult = Record<string, unknown>;
+
+export interface MetricsQuery {
+  mpl: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface QueryLegacy {
+  aggregations?: Array<Aggregation>;
+  continuationToken?: string;
+  cursor?: string;
+  endTime: string;
+  filter?: Filter;
+  groupBy?: Array<string>;
+  includeCursor?: boolean;
+  limit?: number;
+  order?: Array<Order>;
+  project?: Array<Projection>;
+  resolution: string;
+  startTime: string;
+  virtualFields?: Array<VirtualColumn>;
+}
+
+export interface Aggregation {
+  argument?: any;
+  field: string;
+  op: AggregationOp;
+}
+
+export interface TabularAggregation {
+  name: AggregationOp;
+  args: any[];
+  fields: string[];
+}
+
+export enum AggregationOp {
+  Count = 'count',
+  Distinct = 'distinct',
+  Sum = 'sum',
+  Avg = 'avg',
+  Min = 'min',
+  Max = 'max',
+  Topk = 'topk',
+  Percentiles = 'percentiles',
+  Histogram = 'histogram',
+  Variance = 'variance',
+  Stdev = 'stdev',
+  ArgMin = 'argmin',
+  ArgMax = 'argmax',
+  MakeSet = 'makeset',
+  MakeSetIf = 'makesetif',
+  CountIf = 'countif',
+  CountDistinctIf = 'distinctif',
+}
+
+export interface Filter {
+  caseSensitive?: boolean;
+  children?: Array<Filter>;
+  field: string;
+  op: FilterOp;
+  value?: any;
+}
+
+export enum FilterOp {
+  And = 'and',
+  Or = 'or',
+  Not = 'not',
+  Equal = '==',
+  NotEqual = '!=',
+  Exists = 'exists',
+  NotExists = 'not-exists',
+  GreaterThan = '>',
+  GreaterThanOrEqualTo = '>=',
+  LessThan = '<',
+  LessThanOrEqualTo = '<=',
+  Gt = 'gt',
+  Gte = 'gte',
+  Lt = 'lt',
+  Lte = 'lte',
+  StartsWith = 'starts-with',
+  NotStartsWith = 'not-starts-with',
+  EndsWith = 'ends-with',
+  NotEndsWith = 'not-ends-with',
+  Contains = 'contains',
+  NotContains = 'not-contains',
+  Regexp = 'regexp',
+  NotRegexp = 'not-regexp',
+}
+
+export interface Order {
+  desc: boolean;
+  field: string;
+}
+
+export interface Projection {
+  alias?: string;
+  field: string;
+}
+
+export interface VirtualColumn {
+  alias: string;
+  expr: string;
+}
+
+export interface QueryLegacyResult {
+  buckets: Timeseries;
+  matches?: Array<Entry>;
+  status: Status;
+}
+
+export interface QueryResult {
+  request: QueryLegacy;
+
+  // Copied from QueryResult
+  buckets: Timeseries;
+  datasetNames: string[];
+  matches?: Array<Entry>;
+  status: Status;
+}
+
+export interface RawTabularQueryResult {
+  datasetNames: string[];
+  fieldsMetaMap: Record<
+    string,
+    Array<{ description: string; hidden: boolean; name: string; type: string; unit: string }>
+  >;
+  format: string;
+  status: Status;
+  tables: Array<RawAPLResultTable>;
+}
+
+export interface TabularQueryResult extends RawTabularQueryResult {
+  tables: Array<APLResultTable>;
+}
+
+export interface RawAPLResultTable {
+  name: string;
+  sources: Array<{ name: string }>;
+  fields: Array<{ name: string; type: string; agg?: TabularAggregation }>;
+  order: Array<{
+    name: string;
+    desc: boolean;
+  }>;
+  groups: Array<{ name: string }>;
+  range?: {
+    field: string;
+    start: string;
+    end: string;
+  };
+  buckets?: { field: string; size: any };
+  columns?: Array<Array<any>>;
+}
+
+export interface APLResultTable extends RawAPLResultTable {
+  /**
+   * Returns an iterable that yields each row of the table as a record,
+   * where the keys are the field names and the values are the values in the columns.
+   *
+   * @returns {Generator<Record<string, any>, undefined, unknown>}
+   */
+  events: () => Generator<Record<string, any>, undefined, unknown>;
+}
+
+export interface Timeseries {
+  series?: Array<Interval>;
+  totals?: Array<EntryGroup>;
+}
+
+export interface Interval {
+  endTime: string;
+  groups?: Array<EntryGroup>;
+  startTime: string;
+}
+
+export interface EntryGroup {
+  aggregations?: Array<EntryGroupAgg>;
+  group: { [key: string]: any };
+  id: number;
+}
+
+export interface EntryGroupAgg {
+  op: string;
+  value: any;
+}
+
+export interface Entry {
+  _rowId: string;
+  _sysTime: string;
+  _time: string;
+  data: { [key: string]: any };
+}
+
+export interface Status {
+  blocksExamined: number;
+  continuationToken?: string;
+  elapsedTime: number;
+  isEstimate?: boolean;
+  isPartial: boolean;
+  maxBlockTime: string;
+  messages?: Array<Message>;
+  minBlockTime: string;
+  numGroups: number;
+  rowsExamined: number;
+  rowsMatched: number;
+  maxCursor: string;
+  minCursor: string;
+}
+
+export interface Message {
+  code?: string;
+  count: number;
+  msg: string;
+  priority: string;
+}
+
+export interface Query {
+  apl: string;
+  startTime?: string;
+  endTime?: string;
+}

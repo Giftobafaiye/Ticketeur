@@ -1,0 +1,14 @@
+"use client";
+import { n as createAdapterProvider } from "../../context-Mu913OAK.js";
+import { r as useNuqsNextPagesRouterAdapter, t as NavigationSpy } from "../../impl.pages-CZFUzBFr.js";
+import { createElement } from "react";
+//#region src/adapters/next/pages.ts
+const Provider = createAdapterProvider(useNuqsNextPagesRouterAdapter);
+const NuqsAdapter = ({ children, ...adapterProps }) => createElement(Provider, {
+	...adapterProps,
+	children: [createElement(NavigationSpy, { key: "nuqs-adapter-navigation-spy" }), children]
+});
+//#endregion
+export { NuqsAdapter };
+
+//# sourceMappingURL=pages.js.map

@@ -1,0 +1,16 @@
+import type { Command } from "commander";
+import { CliApiClient } from "../apiClient.js";
+import type { LoginResult } from "../utilities/session.js";
+export declare function configureLoginCommand(program: Command): Command;
+export type LoginOptions = {
+    defaultApiUrl?: string;
+    embedded?: boolean;
+    profile?: string;
+    silent?: boolean;
+    browser?: boolean;
+};
+export declare function login(options?: LoginOptions): Promise<LoginResult>;
+export declare function getPersonalAccessToken(apiClient: CliApiClient, authorizationCode: string): Promise<{
+    token: string;
+    obfuscatedToken: string;
+}>;

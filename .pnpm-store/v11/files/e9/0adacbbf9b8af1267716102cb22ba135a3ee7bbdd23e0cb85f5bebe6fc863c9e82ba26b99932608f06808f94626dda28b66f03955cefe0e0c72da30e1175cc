@@ -1,0 +1,53 @@
+import type { Command } from "commander";
+import { z } from "zod";
+declare const clients: readonly ["claude-code", "cursor", "vscode", "zed", "windsurf", "gemini-cli", "crush", "cline", "openai-codex", "opencode", "amp", "ruler"];
+declare const scopes: readonly ["user", "project", "local"];
+declare const InstallMcpCommandOptions: z.ZodObject<{
+    projectRef: z.ZodOptional<z.ZodString>;
+    tag: z.ZodDefault<z.ZodString>;
+    devOnly: z.ZodOptional<z.ZodBoolean>;
+    yolo: z.ZodDefault<z.ZodBoolean>;
+    scope: z.ZodOptional<z.ZodEnum<{
+        local: "local";
+        project: "project";
+        user: "user";
+    }>>;
+    client: z.ZodOptional<z.ZodArray<z.ZodEnum<{
+        amp: "amp";
+        "claude-code": "claude-code";
+        cline: "cline";
+        crush: "crush";
+        cursor: "cursor";
+        "gemini-cli": "gemini-cli";
+        "openai-codex": "openai-codex";
+        opencode: "opencode";
+        ruler: "ruler";
+        vscode: "vscode";
+        windsurf: "windsurf";
+        zed: "zed";
+    }>>>;
+    logFile: z.ZodOptional<z.ZodString>;
+    apiUrl: z.ZodOptional<z.ZodString>;
+    logLevel: z.ZodDefault<z.ZodEnum<{
+        debug: "debug";
+        error: "error";
+        info: "info";
+        log: "log";
+        none: "none";
+        warn: "warn";
+    }>>;
+}, z.core.$strip>;
+type InstallMcpCommandOptions = z.infer<typeof InstallMcpCommandOptions>;
+export declare function configureInstallMcpCommand(program: Command): Command;
+type InstallMcpServerResults = Array<InstallMcpServerResult>;
+type InstallMcpServerResult = {
+    configPath: string;
+    clientName: (typeof clients)[number];
+    scope: McpServerScope;
+};
+export declare function installMcpServer(options: InstallMcpCommandOptions): Promise<InstallMcpServerResults>;
+type McpServerScope = {
+    scope: (typeof scopes)[number];
+    location: string;
+};
+export {};

@@ -1,0 +1,45 @@
+import { EVENT } from "@axiomhq/logging";
+import { appendNextJsAxiomClient } from "./identifier.js";
+const transformOnRequestError = (...args) => {
+  const [error, request, context] = args;
+  if (error instanceof Error) {
+    return [
+      error.message,
+      {
+        ...error,
+        error: error.name,
+        cause: error.cause,
+        stack: error.stack,
+        digest: error.digest,
+        context,
+        [EVENT]: {
+          request,
+          source: "error.tsx"
+        }
+      }
+    ];
+  }
+  return [
+    `${request.method} ${request.path} ${context.routeType}`,
+    {
+      error,
+      context,
+      [EVENT]: {
+        request,
+        source: "error.tsx"
+      }
+    }
+  ];
+};
+const createOnRequestError = (logger) => {
+  appendNextJsAxiomClient(logger);
+  return async (...args) => {
+    logger.error(...transformOnRequestError(...args));
+    await logger.flush();
+  };
+};
+export {
+  createOnRequestError,
+  transformOnRequestError
+};
+//# sourceMappingURL=instrumentation.js.map

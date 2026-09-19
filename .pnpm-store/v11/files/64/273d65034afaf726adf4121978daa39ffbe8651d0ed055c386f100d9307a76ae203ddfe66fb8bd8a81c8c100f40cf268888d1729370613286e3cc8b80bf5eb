@@ -1,0 +1,6 @@
+import type { BuildRuntime } from "@trigger.dev/core/v3";
+export declare function resolveDeploymentRuntime({ configuredRuntime, runtimeWasExplicit, projectDefaultRuntime, }: {
+    configuredRuntime: BuildRuntime;
+    runtimeWasExplicit: boolean;
+    projectDefaultRuntime: BuildRuntime | null | undefined;
+}): BuildRuntime;

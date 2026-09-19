@@ -1,0 +1,41 @@
+"use client";
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const React = require("react");
+const identifier = require("./identifier.cjs");
+function createUseLogger(logger) {
+  if (!logger) {
+    throw new Error("A logger must be provided to create useLogger");
+  }
+  if (logger.config && !logger.config.formatters?.includes(identifier.frameworkIdentifierFormatter)) {
+    logger.config.formatters = [...logger.config.formatters ?? [], identifier.frameworkIdentifierFormatter];
+  }
+  logger.appendAxiomClient?.(identifier.axiomClient);
+  const useLogger = () => {
+    const [path, setPath] = React.useState(typeof window !== "undefined" ? window.location.pathname : "");
+    React.useEffect(() => {
+      const handleLocationChange = () => {
+        setPath(window.location.pathname);
+      };
+      window.addEventListener("popstate", handleLocationChange);
+      window.addEventListener("pushState", handleLocationChange);
+      window.addEventListener("replaceState", handleLocationChange);
+      return () => {
+        window.removeEventListener("popstate", handleLocationChange);
+        window.removeEventListener("pushState", handleLocationChange);
+        window.removeEventListener("replaceState", handleLocationChange);
+      };
+    }, []);
+    React.useEffect(() => {
+      return () => {
+        if (logger) {
+          logger.flush();
+        }
+      };
+    }, [path]);
+    return logger;
+  };
+  return useLogger;
+}
+exports.createUseLogger = createUseLogger;
+//# sourceMappingURL=use-logger.cjs.map

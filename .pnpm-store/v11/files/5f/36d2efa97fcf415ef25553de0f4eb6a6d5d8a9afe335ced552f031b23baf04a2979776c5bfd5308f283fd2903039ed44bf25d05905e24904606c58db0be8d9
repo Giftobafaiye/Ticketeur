@@ -1,0 +1,5 @@
+const Version = "0.4.1";
+export {
+  Version
+};
+//# sourceMappingURL=runtime.js.map

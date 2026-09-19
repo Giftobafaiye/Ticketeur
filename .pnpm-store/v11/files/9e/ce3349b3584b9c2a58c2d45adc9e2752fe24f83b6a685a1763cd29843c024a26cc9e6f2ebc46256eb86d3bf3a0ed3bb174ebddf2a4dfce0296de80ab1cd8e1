@@ -1,0 +1,37 @@
+import type { Command } from "commander";
+declare const targets: readonly ["claude-code", "cursor", "vscode", "agents.md"];
+export declare function configureSkillsCommand(program: Command): Command;
+/**
+ * Loads the agent skills bundled in this CLI (`<cli>/skills`, shipped via `files[]`).
+ * The skills dir and version are resolved from the CLI's own package.json, anchored at
+ * `sourceDir` (the CLI's location) rather than the user's cwd. The CLI is the only source
+ * of skills (there is no remote fallback), so this only returns null in the unexpected
+ * case that the CLI ships without any skills.
+ *
+ * tshy emits a dialect stub `package.json` ({"type":"module"}) in `dist/esm`, so the
+ * package.json nearest the bundled code is NOT the package root and has no `skills/`
+ * beside it. We walk up to the first package.json that has a `name` (the real root);
+ * that resolves correctly both when bundled (`<root>/dist/esm`) and from source
+ * (`<root>/src`, run via tsx in dev/tests).
+ */
+export declare function resolveBundledPackageJSON(startDir?: string): Promise<string | null>;
+export type SkillsWizardOptions = {
+    target?: Array<(typeof targets)[number]>;
+    yes?: boolean;
+};
+export declare function initiateSkillsInstallWizard(options: SkillsWizardOptions): Promise<void>;
+/**
+ * Mark the agent-skills install prompt as already seen at the current skills version.
+ * `trigger init` calls this after offering skills in its AI-tooling step (whether or not
+ * the user installs them) so `trigger dev` doesn't ask about skills again. Returns false
+ * if the CLI ships without bundled skills.
+ */
+export declare function markSkillsPromptSeen(): Promise<boolean>;
+/**
+ * Install skills as part of `trigger init`. The user already opted in via init's AI-tooling
+ * prompt, so this skips the extra confirm and goes straight to target/skill selection, then
+ * marks the prompt seen so `trigger dev` won't re-prompt. Returns false if the CLI ships
+ * without bundled skills.
+ */
+export declare function installSkillsFromInit(opts?: SkillsWizardOptions): Promise<boolean>;
+export {};

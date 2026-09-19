@@ -1,0 +1,23 @@
+import type { Command } from "commander";
+import { type PackageJson, type ResolveOptions } from "pkg-types";
+import type { z } from "zod";
+export declare const UpdateCommandOptions: z.ZodObject<{
+    logLevel: z.ZodDefault<z.ZodEnum<{
+        debug: "debug";
+        error: "error";
+        info: "info";
+        log: "log";
+        none: "none";
+        warn: "warn";
+    }>>;
+    skipTelemetry: z.ZodDefault<z.ZodBoolean>;
+}, z.core.$strip>;
+export type UpdateCommandOptions = z.infer<typeof UpdateCommandOptions>;
+export declare function configureUpdateCommand(program: Command): Command;
+export declare function updateTriggerPackages(dir: string, options: UpdateCommandOptions, embedded?: boolean, requireUpdate?: boolean): Promise<boolean>;
+export declare function tryResolveTriggerPackageVersion(name: string, basedir?: string): Promise<string | undefined>;
+export declare function getPackageJson(absoluteProjectPath: string, options?: ResolveOptions): Promise<{
+    packageJson: PackageJson;
+    readonlyPackageJson: PackageJson;
+    packageJsonPath: string;
+}>;

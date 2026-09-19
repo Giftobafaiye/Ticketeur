@@ -1,0 +1,32 @@
+
+> @axiomhq/react@0.4.1 build /home/runner/work/axiom-js/axiom-js/packages/react
+> vite build
+
+[36mvite v7.3.6 [32mbuilding client environment for production...[36m[39m
+transforming...
+[33msrc/use-logger.ts (1:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.[39m
+[33msrc/use-logger.ts (1:0): Module level directives cause errors when bundled, "use client" in "src/use-logger.ts" was ignored.[39m
+[33msrc/web-vitals.tsx (1:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.[39m
+[33msrc/web-vitals.tsx (1:0): Module level directives cause errors when bundled, "use client" in "src/web-vitals.tsx" was ignored.[39m
+[32m✓[39m 5 modules transformed.
+rendering chunks...
+[32m
+[36m[vite:dts][32m Start generate declaration files...[39m
+[32m
+[36m[vite:dts][32m Start generate declaration files...[39m
+computing gzip size...
+[2mdist/[22m[36mesm/lib/runtime.js  [39m[1m[2m0.08 kB[22m[1m[22m[2m │ gzip: 0.10 kB[22m[2m │ map: 0.24 kB[22m
+[2mdist/[22m[36mesm/index.js        [39m[1m[2m0.47 kB[22m[1m[22m[2m │ gzip: 0.22 kB[22m[2m │ map: 0.09 kB[22m
+[2mdist/[22m[36mesm/identifier.js   [39m[1m[2m0.49 kB[22m[1m[22m[2m │ gzip: 0.26 kB[22m[2m │ map: 0.94 kB[22m
+[2mdist/[22m[36mesm/use-logger.js   [39m[1m[2m1.44 kB[22m[1m[22m[2m │ gzip: 0.52 kB[22m[2m │ map: 1.91 kB[22m
+[2mdist/[22m[36mesm/web-vitals.js   [39m[1m[2m4.27 kB[22m[1m[22m[2m │ gzip: 1.35 kB[22m[2m │ map: 5.75 kB[22m
+[32m[36m[vite:dts][32m Declaration files built in 4851ms.
+[39m
+[32m[36m[vite:dts][32m Declaration files built in 1798ms.
+[39m
+[2mdist/[22m[36mcjs/lib/runtime.cjs  [39m[1m[2m0.18 kB[22m[1m[22m[2m │ gzip: 0.16 kB[22m[2m │ map: 0.25 kB[22m
+[2mdist/[22m[36mcjs/identifier.cjs   [39m[1m[2m0.67 kB[22m[1m[22m[2m │ gzip: 0.33 kB[22m[2m │ map: 0.97 kB[22m
+[2mdist/[22m[36mcjs/index.cjs        [39m[1m[2m0.71 kB[22m[1m[22m[2m │ gzip: 0.31 kB[22m[2m │ map: 0.10 kB[22m
+[2mdist/[22m[36mcjs/use-logger.cjs   [39m[1m[2m1.55 kB[22m[1m[22m[2m │ gzip: 0.58 kB[22m[2m │ map: 1.93 kB[22m
+[2mdist/[22m[36mcjs/web-vitals.cjs   [39m[1m[2m5.02 kB[22m[1m[22m[2m │ gzip: 1.55 kB[22m[2m │ map: 5.83 kB[22m
+[32m✓ built in 5.35s[39m

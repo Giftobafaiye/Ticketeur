@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const identifier = require("./identifier.cjs");
+const useLogger = require("./use-logger.cjs");
+const webVitals = require("./web-vitals.cjs");
+exports.axiomClient = identifier.axiomClient;
+exports.frameworkIdentifier = identifier.frameworkIdentifier;
+exports.frameworkIdentifierFormatter = identifier.frameworkIdentifierFormatter;
+exports.createUseLogger = useLogger.createUseLogger;
+exports.createWebVitalsComponent = webVitals.createWebVitalsComponent;
+exports.transformWebVitalsMetric = webVitals.transformWebVitalsMetric;
+exports.useReportWebVitals = webVitals.useReportWebVitals;
+//# sourceMappingURL=index.cjs.map

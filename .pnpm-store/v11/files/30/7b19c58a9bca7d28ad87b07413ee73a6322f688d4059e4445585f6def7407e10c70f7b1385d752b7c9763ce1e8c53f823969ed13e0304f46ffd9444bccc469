@@ -1,0 +1,4 @@
+/**
+ * JSON.stringify with circular-reference and bigint handling.
+ */
+export declare function safeStringify(value: unknown): string;

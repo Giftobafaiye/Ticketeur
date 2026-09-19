@@ -1,0 +1,7 @@
+import { serverContextFieldsFormatter } from "./context/storage.js";
+import { frameworkIdentifierFormatter } from "./identifier.js";
+const nextJsFormatters = [frameworkIdentifierFormatter, serverContextFieldsFormatter];
+export {
+  nextJsFormatters
+};
+//# sourceMappingURL=formatters.js.map

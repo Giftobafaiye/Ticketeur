@@ -1,0 +1,8 @@
+import type { Command } from "commander";
+export declare function configurePreviewCommand(program: Command): void;
+export declare function archivePreviewBranch(authorization: {
+    auth: {
+        apiUrl: string;
+        accessToken: string;
+    };
+}, branch: string, project: string): Promise<boolean>;

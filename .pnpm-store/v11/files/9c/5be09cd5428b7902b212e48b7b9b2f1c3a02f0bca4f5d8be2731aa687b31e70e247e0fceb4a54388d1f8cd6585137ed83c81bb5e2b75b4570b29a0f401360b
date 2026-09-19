@@ -1,0 +1,6 @@
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const identifier = require("./identifier.cjs");
+const nextJsFormatters = [identifier.frameworkIdentifierFormatter];
+exports.nextJsFormatters = nextJsFormatters;
+//# sourceMappingURL=formatters.client.cjs.map
