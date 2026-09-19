@@ -8,10 +8,7 @@ export const env = createEnv({
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.url(),
     BETTER_AUTH_API_KEY: z.string().min(1),
-    APP_URLS: z
-      .string()
-      .default('http://localhost:3000')
-      .transform((val) => val.split(',').map((url) => url.trim())),
+    APP_URLS: z.string().default('http://localhost:3000'),
     GOOGLE_CLIENT_ID: z.string().optional().default(''),
     GOOGLE_CLIENT_SECRET: z.string().optional().default(''),
     RESEND_API_KEY: z.string().min(1),
@@ -34,3 +31,15 @@ export const env = createEnv({
   emptyStringAsUndefined: true,
   skipValidation: true,
 })
+
+// `skipValidation: true` makes createEnv return the raw runtimeEnv before the
+// schema is parsed, so the `.default()` and `.transform()` above never run in
+// this repo. Declare APP_URLS as the plain comma-separated string the runtime
+// actually holds, and split it here so consumers never spread the raw string
+// into an array of single characters.
+export function getAppUrls(): string[] {
+  return (env.APP_URLS ?? 'http://localhost:3000')
+    .split(',')
+    .map((url) => url.trim())
+    .filter(Boolean)
+}

@@ -4,7 +4,7 @@ import { admin, twoFactor, emailOTP } from 'better-auth/plugins'
 import { tasks } from '@trigger.dev/sdk'
 
 import { db } from '@ticketur/db'
-import { env } from '@ticketur/env/core'
+import { env, getAppUrls } from '@ticketur/env/core'
 
 import {
   ac,
@@ -115,7 +115,7 @@ export function createAuth(cookiePrefix: string) {
     advanced: {
       cookiePrefix,
     },
-    trustedOrigins: [...(env.APP_URLS ?? []), env.BETTER_AUTH_URL],
+    trustedOrigins: [...getAppUrls(), env.BETTER_AUTH_URL].filter(Boolean),
   })
 }
 
