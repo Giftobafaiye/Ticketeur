@@ -1,9 +1,0 @@
-import { BuildTarget } from "@trigger.dev/core/v3/schemas";
-import { BuildExtension, ResolvedConfig } from "@trigger.dev/core/v3/build";
-import { CliApiClient } from "../apiClient.js";
-export declare function createExternalsBuildExtension(target: BuildTarget, config: ResolvedConfig, forcedExternal?: string[]): BuildExtension;
-export declare function makeExternalRegexp(packageName: string): RegExp;
-export declare function packageNameForImportPath(importPath: string): string;
-export declare function resolveAlwaysExternal(client: CliApiClient): Promise<string[]>;
-export declare function isBareModuleImport(path: string): boolean;
-export declare function isBuiltinModule(path: string): boolean;

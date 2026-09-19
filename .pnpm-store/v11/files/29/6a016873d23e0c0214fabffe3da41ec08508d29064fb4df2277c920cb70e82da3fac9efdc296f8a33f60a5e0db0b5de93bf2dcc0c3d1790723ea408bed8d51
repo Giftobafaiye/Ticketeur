@@ -1,1 +1,0 @@
-import { Img, ImgProps } from "./img.mjs";

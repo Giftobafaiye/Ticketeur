@@ -1,6 +1,0 @@
-/**
- * If the indexer registered any duplicate task ids (across files and task
- * types), report them to the parent via TASKS_FAILED_TO_INDEX and return true.
- * Callers must stop indexing (skip INDEX_COMPLETE) when this returns true.
- */
-export declare function reportTaskIdCollisions(send: (message: unknown) => void): Promise<boolean>;

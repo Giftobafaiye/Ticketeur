@@ -1,8 +1,0 @@
-{
-  "type": "module",
-  "sideEffects": [
-    "./dist/esm/v3/sdkScope/storage-node.js",
-    "./dist/commonjs/v3/sdkScope/storage-node.js",
-    "./v3/sdkScope/storage-node.js"
-  ]
-}

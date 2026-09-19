@@ -1,1 +1,0 @@
-export declare function createBundleArchive(bundleDir: string, outputPath: string): Promise<void>;

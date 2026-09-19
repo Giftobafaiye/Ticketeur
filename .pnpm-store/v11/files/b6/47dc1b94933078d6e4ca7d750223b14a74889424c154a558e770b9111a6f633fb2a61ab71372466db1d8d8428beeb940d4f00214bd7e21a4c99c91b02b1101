@@ -1,3 +1,0 @@
-import { Formatter } from 'src/logger';
-export declare const injectPlatform: Formatter;
-export declare const defaultFormatters: Formatter[];

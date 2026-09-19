@@ -1,7 +1,0 @@
-import { Formatter, LogEvent } from '@axiomhq/logging';
-export declare const frameworkIdentifier: {
-    name: "react-axiom-version";
-    version: string;
-};
-export declare const axiomClient: string;
-export declare const frameworkIdentifierFormatter: Formatter<LogEvent, LogEvent>;

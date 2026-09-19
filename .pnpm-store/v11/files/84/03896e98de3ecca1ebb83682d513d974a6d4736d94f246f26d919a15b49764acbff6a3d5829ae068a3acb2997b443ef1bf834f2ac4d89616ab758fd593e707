@@ -1,2 +1,0 @@
-import type { BackgroundWorkerWarning } from "@trigger.dev/core/v3";
-export declare function formatScheduleWarnings(warnings: BackgroundWorkerWarning[], separator?: string): string;

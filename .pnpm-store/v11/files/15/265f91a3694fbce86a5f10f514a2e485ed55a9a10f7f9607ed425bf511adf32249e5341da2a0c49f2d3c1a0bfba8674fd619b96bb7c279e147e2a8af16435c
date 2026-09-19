@@ -1,3 +1,0 @@
-import type { Command } from "commander";
-export declare function configureDeployCommand(program: Command): Command;
-export declare function verifyDirectory(dir: string, projectPath: string): void;

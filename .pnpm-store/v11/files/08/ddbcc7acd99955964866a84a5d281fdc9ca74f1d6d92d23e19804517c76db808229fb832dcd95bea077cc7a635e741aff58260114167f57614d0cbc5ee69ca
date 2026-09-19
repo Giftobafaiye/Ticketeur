@@ -1,2 +1,0 @@
-import { Logger } from '@axiomhq/logging';
-export declare function createUseLogger(logger: Logger): () => Logger<any, any, any>;

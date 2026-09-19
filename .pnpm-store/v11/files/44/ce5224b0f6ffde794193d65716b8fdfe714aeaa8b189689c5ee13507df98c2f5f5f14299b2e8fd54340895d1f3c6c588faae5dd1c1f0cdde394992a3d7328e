@@ -1,4 +1,0 @@
-import { Logger } from '@axiomhq/logging';
-import { Instrumentation } from 'next';
-export declare const transformOnRequestError: (...args: Parameters<Instrumentation.onRequestError>) => [message: string, report: Record<string | symbol, any>];
-export declare const createOnRequestError: (logger: Logger) => Instrumentation.onRequestError;

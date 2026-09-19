@@ -1,2 +1,0 @@
-import type { Command } from "commander";
-export declare function configureRunsCancelCommand(program: Command): Command;

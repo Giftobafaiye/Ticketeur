@@ -1,5 +1,0 @@
-import { z } from "zod";
-export declare const RulesFileInstallStrategy: z.ZodEnum<{
-    skills: "skills";
-}>;
-export type RulesFileInstallStrategy = z.infer<typeof RulesFileInstallStrategy>;

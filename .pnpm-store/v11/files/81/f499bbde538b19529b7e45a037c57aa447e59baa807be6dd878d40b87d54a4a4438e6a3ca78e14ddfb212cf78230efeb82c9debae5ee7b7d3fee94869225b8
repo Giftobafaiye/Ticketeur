@@ -1,1 +1,0 @@
-{"version":3,"file":"formatters.client.cjs","sources":["../../src/formatters.client.ts"],"sourcesContent":["import { frameworkIdentifierFormatter } from 'src/identifier';\n\nexport const nextJsFormatters = [frameworkIdentifierFormatter];\n"],"names":["frameworkIdentifierFormatter"],"mappings":";;;AAEO,MAAM,mBAAmB,CAACA,WAAAA,4BAA4B;;"}

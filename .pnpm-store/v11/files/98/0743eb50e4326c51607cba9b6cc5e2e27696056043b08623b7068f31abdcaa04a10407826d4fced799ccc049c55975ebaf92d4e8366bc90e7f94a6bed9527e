@@ -1,1 +1,0 @@
-export declare const nextJsFormatters: import('node_modules/@axiomhq/logging/dist/cjs/logger.cjs').Formatter<import('node_modules/@axiomhq/logging/dist/cjs/logger.cjs').LogEvent, import('node_modules/@axiomhq/logging/dist/cjs/logger.cjs').LogEvent>[];

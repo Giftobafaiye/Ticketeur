@@ -1,5 +1,0 @@
-"use strict";
-Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-const Version = "0.4.1";
-exports.Version = Version;
-//# sourceMappingURL=runtime.cjs.map

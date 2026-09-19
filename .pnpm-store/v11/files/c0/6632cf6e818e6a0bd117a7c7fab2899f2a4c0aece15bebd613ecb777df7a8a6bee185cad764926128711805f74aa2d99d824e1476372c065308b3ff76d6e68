@@ -1,4 +1,0 @@
-export declare const SCHEDULE_PLAN_LIMIT_HEADER = "Free plan limited to hourly schedules or less";
-export declare class SchedulePlanLimitError extends Error {
-    constructor(message: string);
-}

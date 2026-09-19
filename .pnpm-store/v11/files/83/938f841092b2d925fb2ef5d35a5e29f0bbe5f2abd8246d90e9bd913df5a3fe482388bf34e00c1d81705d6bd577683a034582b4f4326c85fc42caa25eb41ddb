@@ -1,1 +1,0 @@
-export declare const nextJsFormatters: import('@axiomhq/logging').Formatter<import('@axiomhq/logging').LogEvent, import('@axiomhq/logging').LogEvent>[];

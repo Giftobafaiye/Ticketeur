@@ -1,1 +1,0 @@
-import { Hr, HrProps } from "./hr.cjs";

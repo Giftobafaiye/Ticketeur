@@ -1,1 +1,0 @@
-import { Heading, HeadingAs, HeadingProps } from "./heading.cjs";

@@ -1,8 +1,0 @@
-const Version = "0.4.1";
-typeof self !== "undefined" && typeof globalThis.WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
-const isEdgeRuntime = globalThis.EdgeRuntime ? true : false;
-export {
-  Version,
-  isEdgeRuntime
-};
-//# sourceMappingURL=runtime.js.map

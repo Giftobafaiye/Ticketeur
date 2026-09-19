@@ -1,9 +1,0 @@
-export declare const Version: string;
-declare global {
-    const __PACKAGE_VERSION__: string;
-    var WorkerGlobalScope: any;
-    var EdgeRuntime: any;
-}
-export declare const isWebWorker: boolean;
-export declare const isBrowser: boolean;
-export declare const isEdgeRuntime: boolean;

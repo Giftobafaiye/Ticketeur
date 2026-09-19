@@ -1,4 +1,0 @@
-import type { GitMeta } from "@trigger.dev/core/v3";
-export declare function createGitMeta(directory: string): Promise<GitMeta | undefined>;
-export declare function sanitizeGitRemoteUrl(remoteUrl: string | undefined): string | undefined;
-export declare function isGitHubActions(): boolean;

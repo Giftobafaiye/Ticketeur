@@ -1,2 +1,0 @@
-import type { McpContext } from "./context.js";
-export declare function registerTools(context: McpContext): void;
