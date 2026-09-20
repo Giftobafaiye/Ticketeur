@@ -3,10 +3,18 @@ on:
   push:
     branches:
       - main
+    # Must cover every workspace package the worker bundles, plus this file, so
+    # that a fix to any of them can re-trigger the deploy it unblocks.
+    # @ticketur/jobs depends on @ticketur/db, @ticketur/email and @ticketur/env
+    # (the last is reached through @ticketur/db/src/client.ts and
+    # packages/jobs/src/utils/resend.ts); @ticketur/auth consumes
+    # @ticketur/jobs, so it is not part of the bundle.
     paths:
       - "packages/jobs/**"
       - "packages/db/**"
       - "packages/email/**"
+      - "packages/env/**"
+      - ".github/workflows/release-trigger-prod.yml"
   workflow_dispatch:
 # Least privilege: the job only reads the repository to run the deploy. This
 # does not affect the Trigger.dev secrets below, which come from repo secrets.
