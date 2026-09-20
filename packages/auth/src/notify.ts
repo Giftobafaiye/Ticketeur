@@ -51,10 +51,19 @@ async function enqueue(
     await tasks.trigger(taskId, payload)
   } catch (error) {
     console.error(
-      `[auth] Trigger.dev enqueue failed for '${taskId}'; sending the email directly through Resend`,
-      error
+      '[auth] Trigger.dev enqueue failed; sending the email directly through Resend',
+      { taskId, error }
     )
-    await sendDirect()
+    try {
+      await sendDirect()
+    } catch (sendError) {
+      console.error('[auth] direct Resend fallback failed', {
+        taskId,
+        triggerError: error,
+        sendError,
+      })
+      throw sendError
+    }
   }
 }
 
