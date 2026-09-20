@@ -329,6 +329,9 @@ importers:
       '@ticketur/env':
         specifier: workspace:*
         version: link:../env
+      '@ticketur/jobs':
+        specifier: workspace:*
+        version: link:../jobs
       '@trigger.dev/sdk':
         specifier: 4.6.3
         version: 4.6.3(react@19.3.0)(supports-color@10.2.2)(zod@4.6.5)
