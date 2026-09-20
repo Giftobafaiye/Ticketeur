@@ -28,7 +28,11 @@ export const env = createEnv({
     GOOGLE_CLIENT_ID: z.string().optional().default(''),
     GOOGLE_CLIENT_SECRET: z.string().optional().default(''),
     RESEND_API_KEY: z.string().min(1),
-    TRIGGER_PROJECT_ID: z.string().min(1),
+    // The Trigger.dev worker environment receives Trigger's own TRIGGER_PROJECT_REF
+    // rather than this project id (packages/jobs/trigger.config.ts resolves the ref
+    // from either), so it is not provisioned in every environment and cannot be
+    // required here.
+    TRIGGER_PROJECT_ID: z.string().min(1).optional(),
     TRIGGER_SECRET_KEY: z.string().optional(),
     BLOB_READ_WRITE_TOKEN: z.string().optional(),
     FLW_PUBLIC_KEY: z.string().optional(),
