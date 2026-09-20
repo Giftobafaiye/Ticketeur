@@ -1,6 +1,7 @@
 {
   "extends": "@ticketur/typescript-config/base.json",
   "compilerOptions": {
+    "jsx": "react-jsx",
     "rootDir": "src",
     "outDir": "dist"
   },

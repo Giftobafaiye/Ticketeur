@@ -1,7 +1,12 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin, twoFactor, emailOTP } from 'better-auth/plugins'
-import { tasks } from '@trigger.dev/sdk'
+import {
+  dispatchPasswordReset,
+  dispatchTwoFactorOtp,
+  dispatchVerificationOtp,
+  dispatchWelcome,
+} from './notify'
 
 import { db } from '@ticketur/db'
 import { env } from '@ticketur/env/core'
@@ -33,7 +38,7 @@ export function createAuth(cookiePrefix: string) {
       enabled: true,
       requireEmailVerification: true,
       sendResetPassword: async ({ user, url }) => {
-        await tasks.trigger('send-password-reset', {
+        await dispatchPasswordReset({
           email: user.email,
           name: user.name,
           resetUrl: url,
@@ -56,7 +61,7 @@ export function createAuth(cookiePrefix: string) {
         otpLength: 6,
         expiresIn: 600,
         async sendVerificationOTP({ email, otp, type }) {
-          await tasks.trigger('send-verification-otp', {
+          await dispatchVerificationOtp({
             email,
             otp,
             type,
@@ -67,7 +72,7 @@ export function createAuth(cookiePrefix: string) {
         issuer: 'Ticketur',
         otpOptions: {
           sendOTP: async ({ user, otp }) => {
-            await tasks.trigger('send-two-factor-otp', {
+            await dispatchTwoFactorOtp({
               email: user.email,
               otp,
             })
@@ -103,9 +108,13 @@ export function createAuth(cookiePrefix: string) {
             return { data: { ...user, role, vendorApprovalStatus: null } }
           },
           after: async (user) => {
-            void tasks.trigger('send-welcome', {
+            // Fire-and-forget: a failed welcome email must not fail signup,
+            // but the rejection still has to be reported instead of unhandled.
+            void dispatchWelcome({
               email: user.email,
               name: user.name,
+            }).catch((error: unknown) => {
+              console.error('[auth] welcome email failed', error)
             })
           },
         },
