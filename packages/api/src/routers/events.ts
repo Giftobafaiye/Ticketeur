@@ -89,6 +89,11 @@ const guestsInput = z.object({
   pageSize: z.number().int().min(1).max(100).default(20),
 })
 
+const setCheckedInInput = z.object({
+  code: z.string().min(1),
+  checkedIn: z.boolean(),
+})
+
 const listInput = z.object({
   tab: z
     .enum(['all', 'upcoming', 'in-review', 'draft', 'archived'])
@@ -662,6 +667,8 @@ export const eventsRouter = createTRPCRouter({
           buyerName: orders.buyerName,
           buyerEmail: orders.buyerEmail,
           tierName: ticketTiers.name,
+          checkedIn: tickets.checkedIn,
+          checkedInAt: tickets.checkedInAt,
           purchasedAt: orders.paidAt,
         })
         .from(tickets)
@@ -685,11 +692,73 @@ export const eventsRouter = createTRPCRouter({
           name: r.recipientName || r.buyerName || 'Guest',
           email: r.recipientEmail || r.buyerEmail || '',
           tierName: r.tierName ?? 'General',
+          checkedIn: r.checkedIn,
+          checkedInAt: r.checkedInAt,
           purchasedAt: r.purchasedAt,
         })),
         total: totalRows[0]?.count ?? 0,
         page: input.page,
         pageSize: input.pageSize,
+      }
+    }),
+
+  // Toggles a ticket's check-in state by its QR/gate code — the code is
+  // globally unique, so it alone resolves the event (and thus the organizer
+  // check) without the caller needing to already know which event it's for.
+  setCheckedIn: organizerProcedure
+    .input(setCheckedInInput)
+    .mutation(async ({ ctx, input }) => {
+      const found = await ctx.db
+        .select({
+          id: tickets.id,
+          checkedIn: tickets.checkedIn,
+          organizerId: events.organizerId,
+          recipientName: tickets.recipientName,
+          buyerName: orders.buyerName,
+          tierName: ticketTiers.name,
+        })
+        .from(tickets)
+        .innerJoin(events, eq(events.id, tickets.eventId))
+        .innerJoin(orders, eq(orders.id, tickets.orderId))
+        .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
+        .where(eq(tickets.code, input.code))
+        .limit(1)
+      const ticket = found[0]
+      if (!ticket) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Ticket not found' })
+      }
+      if (
+        ticket.organizerId !== ctx.session.user.id &&
+        ctx.session.user.role !== 'admin'
+      ) {
+        throw new TRPCError({ code: 'FORBIDDEN' })
+      }
+
+      const name = ticket.recipientName || ticket.buyerName || 'Guest'
+      const tierName = ticket.tierName ?? 'General'
+
+      // Already in the requested state (e.g. a double-tap) — no-op.
+      if (ticket.checkedIn === input.checkedIn) {
+        return {
+          id: ticket.id,
+          checkedIn: ticket.checkedIn,
+          name,
+          tierName,
+        }
+      }
+
+      const checkedInAt = input.checkedIn ? new Date() : null
+      await ctx.db
+        .update(tickets)
+        .set({ checkedIn: input.checkedIn, checkedInAt })
+        .where(eq(tickets.id, ticket.id))
+
+      return {
+        id: ticket.id,
+        checkedIn: input.checkedIn,
+        checkedInAt,
+        name,
+        tierName,
       }
     }),
 })

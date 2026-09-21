@@ -1,15 +1,18 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Search01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
+  CheckmarkCircle02Icon,
 } from '@hugeicons/core-free-icons'
 
 import { cn } from '@ticketur/ui/lib/utils'
+import { Button } from '@ticketur/ui/components/button'
 import { Input } from '@ticketur/ui/components/input'
 
 import { useTRPC } from '@/lib/trpc'
@@ -24,17 +27,42 @@ function formatPurchasedAt(d: Date | string | null): string {
   })
 }
 
+function formatCheckedInTime(d: Date | string | null): string {
+  if (!d) return ''
+  return new Date(d).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 export function EventGuestList({ eventId }: { eventId: string }) {
   const trpc = useTRPC()
+  const queryClient = useQueryClient()
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
+  const [pendingCode, setPendingCode] = useState<string | null>(null)
 
-  const { data, isLoading } = useQuery(
-    trpc.org.events.guests.queryOptions({
-      eventId,
-      q,
-      page,
-      pageSize: GUESTS_PAGE_SIZE,
+  const guestsQueryOptions = trpc.org.events.guests.queryOptions({
+    eventId,
+    q,
+    page,
+    pageSize: GUESTS_PAGE_SIZE,
+  })
+  const { data, isLoading } = useQuery(guestsQueryOptions)
+
+  const setCheckedIn = useMutation(
+    trpc.org.events.setCheckedIn.mutationOptions({
+      onSuccess: (result) => {
+        toast.success(result.checkedIn ? 'Checked in' : 'Check-in undone', {
+          description: result.name,
+        })
+        queryClient.invalidateQueries({
+          queryKey: guestsQueryOptions.queryKey,
+        })
+      },
+      onError: (e) =>
+        toast.error('Could not update check-in', { description: e.message }),
+      onSettled: () => setPendingCode(null),
     })
   )
 
@@ -66,19 +94,20 @@ export function EventGuestList({ eventId }: { eventId: string }) {
 
       <div className="border-border/60 bg-background overflow-hidden rounded-2xl border">
         <div className="w-full [scrollbar-width:none] overflow-x-auto [&::-webkit-scrollbar]:hidden">
-          <table className="w-full min-w-[720px] table-auto">
+          <table className="w-full min-w-[860px] table-auto">
             <thead className="bg-primary/5">
               <tr className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
                 <th className="px-5 py-4 text-left">Guest</th>
                 <th className="px-5 py-4 text-left">Ticket Tier</th>
                 <th className="px-5 py-4 text-left">Code</th>
                 <th className="px-5 py-4 text-left">Purchased</th>
+                <th className="px-5 py-4 text-left">Check-in</th>
               </tr>
             </thead>
             <tbody className="divide-border/60 divide-y">
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-12 text-center">
+                  <td colSpan={5} className="px-5 py-12 text-center">
                     <p className="text-muted-foreground text-sm">
                       Loading guests…
                     </p>
@@ -86,7 +115,7 @@ export function EventGuestList({ eventId }: { eventId: string }) {
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-12 text-center">
+                  <td colSpan={5} className="px-5 py-12 text-center">
                     <p className="text-muted-foreground text-sm">
                       {q
                         ? 'No guests match your search.'
@@ -115,6 +144,51 @@ export function EventGuestList({ eventId }: { eventId: string }) {
                     </td>
                     <td className="text-foreground px-5 py-4 whitespace-nowrap">
                       {formatPurchasedAt(guest.purchasedAt)}
+                    </td>
+                    <td className="px-5 py-4">
+                      {guest.checkedIn ? (
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium whitespace-nowrap text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                            <HugeiconsIcon
+                              icon={CheckmarkCircle02Icon}
+                              className="size-3.5"
+                              strokeWidth={2}
+                            />
+                            Checked in{' '}
+                            {formatCheckedInTime(guest.checkedInAt)}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={pendingCode === guest.code}
+                            onClick={() => {
+                              setPendingCode(guest.code)
+                              setCheckedIn.mutate({
+                                code: guest.code,
+                                checkedIn: false,
+                              })
+                            }}
+                            className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline disabled:opacity-50"
+                          >
+                            Undo
+                          </button>
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={pendingCode === guest.code}
+                          onClick={() => {
+                            setPendingCode(guest.code)
+                            setCheckedIn.mutate({
+                              code: guest.code,
+                              checkedIn: true,
+                            })
+                          }}
+                        >
+                          Check In
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))
