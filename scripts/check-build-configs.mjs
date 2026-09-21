@@ -7,6 +7,7 @@
 // gains module-scope primitives that only such a payload needs.
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 const CONFIG_PATTERNS = [
   /(^|\/)postcss\.config\.(js|mjs|cjs|ts)$/,
@@ -30,14 +31,23 @@ const FORBIDDEN = [
   { re: /\bXMLHttpRequest\b/, why: 'XMLHttpRequest' },
 ]
 
-const files = execFileSync('git', ['ls-files'], { encoding: 'utf8' })
+// Resolve the repository root and list tracked files from there, so the scan
+// covers every workspace config no matter which package directory invokes it.
+// Vercel runs this from apps/web and apps/admin during their production builds,
+// and the configs that must be checked (including packages/ui/postcss.config.mjs)
+// live outside those directories.
+const repoRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+  encoding: 'utf8',
+}).trim()
+
+const files = execFileSync('git', ['ls-files'], { cwd: repoRoot, encoding: 'utf8' })
   .split('\n')
   .filter(Boolean)
   .filter((f) => CONFIG_PATTERNS.some((re) => re.test(f)))
 
 const violations = []
 for (const file of files) {
-  const lines = readFileSync(file, 'utf8').split('\n')
+  const lines = readFileSync(resolve(repoRoot, file), 'utf8').split('\n')
   lines.forEach((line, i) => {
     for (const { re, why } of FORBIDDEN) {
       if (re.test(line)) violations.push(`${file}:${i + 1}: ${why}: ${line.trim()}`)
