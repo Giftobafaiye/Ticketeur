@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server'
-import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import { tasks } from '@trigger.dev/sdk'
 import { z } from 'zod'
 
@@ -9,6 +9,7 @@ import {
   externalVendorInvites,
   orders,
   ticketTiers,
+  tickets,
   user,
 } from '@ticketur/db'
 
@@ -80,6 +81,13 @@ const updateEventInput = z
     path: ['endDate'],
     message: 'End date must be on or after the start date',
   })
+
+const guestsInput = z.object({
+  eventId: z.string(),
+  q: z.string().default(''),
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(1).max(100).default(20),
+})
 
 const listInput = z.object({
   tab: z
@@ -608,6 +616,80 @@ export const eventsRouter = createTRPCRouter({
         total: totalsRow.total,
         revenueMinor: totalsRow.revenueMinor,
         ordersCount: ordersTotal[0]?.count ?? 0,
+      }
+    }),
+
+  // One row per ticket (not per order) — a group order's attendees each get
+  // their own row, since a guest list names people, not purchases.
+  guests: organizerProcedure
+    .input(guestsInput)
+    .query(async ({ ctx, input }) => {
+      const found = await ctx.db
+        .select({ id: events.id, organizerId: events.organizerId })
+        .from(events)
+        .where(eq(events.id, input.eventId))
+        .limit(1)
+      const ev = found[0]
+      if (!ev) throw new TRPCError({ code: 'NOT_FOUND' })
+      if (
+        ev.organizerId !== ctx.session.user.id &&
+        ctx.session.user.role !== 'admin'
+      ) {
+        throw new TRPCError({ code: 'FORBIDDEN' })
+      }
+
+      const filters = [eq(tickets.eventId, input.eventId)]
+      const q = input.q.trim()
+      if (q.length > 0) {
+        const needle = `%${q}%`
+        filters.push(
+          or(
+            ilike(tickets.recipientName, needle),
+            ilike(tickets.recipientEmail, needle),
+            ilike(tickets.code, needle),
+            ilike(orders.buyerName, needle),
+            ilike(orders.buyerEmail, needle)
+          )!
+        )
+      }
+
+      const rows = await ctx.db
+        .select({
+          id: tickets.id,
+          code: tickets.code,
+          recipientName: tickets.recipientName,
+          recipientEmail: tickets.recipientEmail,
+          buyerName: orders.buyerName,
+          buyerEmail: orders.buyerEmail,
+          tierName: ticketTiers.name,
+          purchasedAt: orders.paidAt,
+        })
+        .from(tickets)
+        .innerJoin(orders, eq(orders.id, tickets.orderId))
+        .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
+        .where(and(...filters))
+        .orderBy(asc(tickets.createdAt))
+        .limit(input.pageSize)
+        .offset((input.page - 1) * input.pageSize)
+
+      const totalRows = await ctx.db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(tickets)
+        .innerJoin(orders, eq(orders.id, tickets.orderId))
+        .where(and(...filters))
+
+      return {
+        rows: rows.map((r) => ({
+          id: r.id,
+          code: r.code,
+          name: r.recipientName || r.buyerName || 'Guest',
+          email: r.recipientEmail || r.buyerEmail || '',
+          tierName: r.tierName ?? 'General',
+          purchasedAt: r.purchasedAt,
+        })),
+        total: totalRows[0]?.count ?? 0,
+        page: input.page,
+        pageSize: input.pageSize,
       }
     }),
 })
