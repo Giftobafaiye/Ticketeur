@@ -16,14 +16,24 @@ on:
       - "packages/env/**"
       - ".github/workflows/release-trigger-prod.yml"
   workflow_dispatch:
-# Least privilege: the job only reads the repository to run the deploy. This
-# does not affect the Trigger.dev secrets below, which come from repo secrets.
+# Least privilege: the job only reads the repository to run the deploy. The
+# Trigger.dev deploy credentials are resolved through the Production
+# environment below.
 permissions:
   contents: read
+# Serialize production publishes. Never cancel a deploy that is already
+# shipping, and let a newer push supersede an older queued one so the newest
+# worker revision is the one that wins.
+concurrency:
+  group: release-trigger-prod-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-latest
     if: github.repository == 'Giftobafaiye/Ticketeur'
+    # Route the deploy through the Production environment so an admin can
+    # attach required reviewers and deployment-branch rules to it.
+    environment: Production
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -32,10 +42,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: "latest"
+          # Pin the build runtime. The worker declares runtime: node-24 in
+          # packages/jobs/trigger.config.ts, so build on that major instead of a
+          # floating "latest".
+          node-version: "24"
           cache: "pnpm"
+      # Gate the publish on the same checks CI runs, so a commit that fails the
+      # injected-code scan or typecheck cannot ship the production worker. The
+      # worker bundle itself is compiled by the deploy step below.
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
+      - name: Scan build configs for injected code
+        run: pnpm check:configs
+      - name: Typecheck
+        run: pnpm typecheck
       - name: Deploy to Trigger.dev
         env:
           TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
