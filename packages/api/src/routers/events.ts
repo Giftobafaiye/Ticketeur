@@ -92,6 +92,10 @@ const guestsInput = z.object({
 const setCheckedInInput = z.object({
   code: z.string().min(1),
   checkedIn: z.boolean(),
+  // When passed, the ticket must belong to this event — guards a scanner
+  // page scoped to one event against a valid code from a different event
+  // the same organizer also runs.
+  eventId: z.string().optional(),
 })
 
 const listInput = z.object({
@@ -711,6 +715,7 @@ export const eventsRouter = createTRPCRouter({
       const found = await ctx.db
         .select({
           id: tickets.id,
+          eventId: tickets.eventId,
           checkedIn: tickets.checkedIn,
           organizerId: events.organizerId,
           recipientName: tickets.recipientName,
@@ -733,15 +738,24 @@ export const eventsRouter = createTRPCRouter({
       ) {
         throw new TRPCError({ code: 'FORBIDDEN' })
       }
+      if (input.eventId && ticket.eventId !== input.eventId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'This ticket is for a different event',
+        })
+      }
 
       const name = ticket.recipientName || ticket.buyerName || 'Guest'
       const tierName = ticket.tierName ?? 'General'
 
-      // Already in the requested state (e.g. a double-tap) — no-op.
+      // Already in the requested state (e.g. a double-tap, or the same QR
+      // scanned twice) — no-op, but tell the caller nothing changed so a
+      // scanner can distinguish a fresh check-in from a repeat scan.
       if (ticket.checkedIn === input.checkedIn) {
         return {
           id: ticket.id,
           checkedIn: ticket.checkedIn,
+          changed: false,
           name,
           tierName,
         }
@@ -757,6 +771,7 @@ export const eventsRouter = createTRPCRouter({
         id: ticket.id,
         checkedIn: input.checkedIn,
         checkedInAt,
+        changed: true,
         name,
         tierName,
       }

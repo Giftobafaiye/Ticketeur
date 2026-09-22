@@ -165,6 +165,7 @@ export function EventGuestList({ eventId }: { eventId: string }) {
                               setCheckedIn.mutate({
                                 code: guest.code,
                                 checkedIn: false,
+                                eventId,
                               })
                             }}
                             className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline disabled:opacity-50"
@@ -183,6 +184,7 @@ export function EventGuestList({ eventId }: { eventId: string }) {
                             setCheckedIn.mutate({
                               code: guest.code,
                               checkedIn: true,
+                              eventId,
                             })
                           }}
                         >
