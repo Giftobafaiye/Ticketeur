@@ -61,3 +61,14 @@ jobs:
           TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
           TRIGGER_PROJECT_REF: ${{ secrets.TRIGGER_PROJECT_REF }}
         run: pnpm --filter @ticketur/jobs run deploy
+      # Exercise the revision just published. Trigger.dev's indexer only catches
+      # import-time faults, so a revision that bundles clean but cannot execute
+      # deploys successfully and shows up first on a real user's email. This
+      # run fails the workflow unless the worker reaches COMPLETED on the
+      # smoke task, so an unverified revision never rides into production
+      # unnoticed. Needs a production Trigger.dev key with trigger access.
+      - name: Smoke-test the deployed worker
+        env:
+          TRIGGER_SECRET_KEY: ${{ secrets.TRIGGER_SECRET_KEY }}
+        run: node packages/jobs/scripts/deploy-smoke.mjs
+        timeout-minutes: 4
