@@ -9,11 +9,19 @@ on:
     # (the last is reached through @ticketur/db/src/client.ts and
     # packages/jobs/src/utils/resend.ts); @ticketur/auth consumes
     # @ticketur/jobs, so it is not part of the bundle.
+    # Also cover the dependency-resolution inputs: the lockfile, the root
+    # manifest (packageManager, root tooling) and the workspace config. A
+    # dependency change can land in any of these without touching a
+    # packages/*/package.json, and the deploy builds from them at deploy time,
+    # so missing them would silently leave the worker on old versions.
     paths:
       - "packages/jobs/**"
       - "packages/db/**"
       - "packages/email/**"
       - "packages/env/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/release-trigger-prod.yml"
   workflow_dispatch:
 # Least privilege: the job only reads the repository to run the deploy. The
