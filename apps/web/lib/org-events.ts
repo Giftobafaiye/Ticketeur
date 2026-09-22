@@ -285,6 +285,8 @@ export const ORG_EVENTS: OrgEvent[] = [
 
 export const EVENTS_PAGE_SIZE = 10
 
+export const GUESTS_PAGE_SIZE = 20
+
 export const STATUS_LABEL: Record<EventStatus, string> = {
   upcoming: 'Upcoming',
   'in-review': 'In Review',

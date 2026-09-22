@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server'
-import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import { tasks } from '@trigger.dev/sdk'
 import { z } from 'zod'
 
@@ -9,6 +9,7 @@ import {
   externalVendorInvites,
   orders,
   ticketTiers,
+  tickets,
   user,
 } from '@ticketur/db'
 
@@ -80,6 +81,22 @@ const updateEventInput = z
     path: ['endDate'],
     message: 'End date must be on or after the start date',
   })
+
+const guestsInput = z.object({
+  eventId: z.string(),
+  q: z.string().default(''),
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(1).max(100).default(20),
+})
+
+const setCheckedInInput = z.object({
+  code: z.string().min(1),
+  checkedIn: z.boolean(),
+  // When passed, the ticket must belong to this event — guards a scanner
+  // page scoped to one event against a valid code from a different event
+  // the same organizer also runs.
+  eventId: z.string().optional(),
+})
 
 const listInput = z.object({
   tab: z
@@ -608,6 +625,155 @@ export const eventsRouter = createTRPCRouter({
         total: totalsRow.total,
         revenueMinor: totalsRow.revenueMinor,
         ordersCount: ordersTotal[0]?.count ?? 0,
+      }
+    }),
+
+  // One row per ticket (not per order) — a group order's attendees each get
+  // their own row, since a guest list names people, not purchases.
+  guests: organizerProcedure
+    .input(guestsInput)
+    .query(async ({ ctx, input }) => {
+      const found = await ctx.db
+        .select({ id: events.id, organizerId: events.organizerId })
+        .from(events)
+        .where(eq(events.id, input.eventId))
+        .limit(1)
+      const ev = found[0]
+      if (!ev) throw new TRPCError({ code: 'NOT_FOUND' })
+      if (
+        ev.organizerId !== ctx.session.user.id &&
+        ctx.session.user.role !== 'admin'
+      ) {
+        throw new TRPCError({ code: 'FORBIDDEN' })
+      }
+
+      const filters = [eq(tickets.eventId, input.eventId)]
+      const q = input.q.trim()
+      if (q.length > 0) {
+        const needle = `%${q}%`
+        filters.push(
+          or(
+            ilike(tickets.recipientName, needle),
+            ilike(tickets.recipientEmail, needle),
+            ilike(tickets.code, needle),
+            ilike(orders.buyerName, needle),
+            ilike(orders.buyerEmail, needle)
+          )!
+        )
+      }
+
+      const rows = await ctx.db
+        .select({
+          id: tickets.id,
+          code: tickets.code,
+          recipientName: tickets.recipientName,
+          recipientEmail: tickets.recipientEmail,
+          buyerName: orders.buyerName,
+          buyerEmail: orders.buyerEmail,
+          tierName: ticketTiers.name,
+          checkedIn: tickets.checkedIn,
+          checkedInAt: tickets.checkedInAt,
+          purchasedAt: orders.paidAt,
+        })
+        .from(tickets)
+        .innerJoin(orders, eq(orders.id, tickets.orderId))
+        .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
+        .where(and(...filters))
+        .orderBy(asc(tickets.createdAt))
+        .limit(input.pageSize)
+        .offset((input.page - 1) * input.pageSize)
+
+      const totalRows = await ctx.db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(tickets)
+        .innerJoin(orders, eq(orders.id, tickets.orderId))
+        .where(and(...filters))
+
+      return {
+        rows: rows.map((r) => ({
+          id: r.id,
+          code: r.code,
+          name: r.recipientName || r.buyerName || 'Guest',
+          email: r.recipientEmail || r.buyerEmail || '',
+          tierName: r.tierName ?? 'General',
+          checkedIn: r.checkedIn,
+          checkedInAt: r.checkedInAt,
+          purchasedAt: r.purchasedAt,
+        })),
+        total: totalRows[0]?.count ?? 0,
+        page: input.page,
+        pageSize: input.pageSize,
+      }
+    }),
+
+  // Toggles a ticket's check-in state by its QR/gate code — the code is
+  // globally unique, so it alone resolves the event (and thus the organizer
+  // check) without the caller needing to already know which event it's for.
+  setCheckedIn: organizerProcedure
+    .input(setCheckedInInput)
+    .mutation(async ({ ctx, input }) => {
+      const found = await ctx.db
+        .select({
+          id: tickets.id,
+          eventId: tickets.eventId,
+          checkedIn: tickets.checkedIn,
+          organizerId: events.organizerId,
+          recipientName: tickets.recipientName,
+          buyerName: orders.buyerName,
+          tierName: ticketTiers.name,
+        })
+        .from(tickets)
+        .innerJoin(events, eq(events.id, tickets.eventId))
+        .innerJoin(orders, eq(orders.id, tickets.orderId))
+        .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
+        .where(eq(tickets.code, input.code))
+        .limit(1)
+      const ticket = found[0]
+      if (!ticket) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Ticket not found' })
+      }
+      if (
+        ticket.organizerId !== ctx.session.user.id &&
+        ctx.session.user.role !== 'admin'
+      ) {
+        throw new TRPCError({ code: 'FORBIDDEN' })
+      }
+      if (input.eventId && ticket.eventId !== input.eventId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'This ticket is for a different event',
+        })
+      }
+
+      const name = ticket.recipientName || ticket.buyerName || 'Guest'
+      const tierName = ticket.tierName ?? 'General'
+
+      // Already in the requested state (e.g. a double-tap, or the same QR
+      // scanned twice) — no-op, but tell the caller nothing changed so a
+      // scanner can distinguish a fresh check-in from a repeat scan.
+      if (ticket.checkedIn === input.checkedIn) {
+        return {
+          id: ticket.id,
+          checkedIn: ticket.checkedIn,
+          changed: false,
+          name,
+          tierName,
+        }
+      }
+
+      const checkedInAt = input.checkedIn ? new Date() : null
+      await ctx.db
+        .update(tickets)
+        .set({ checkedIn: input.checkedIn, checkedInAt })
+        .where(eq(tickets.id, ticket.id))
+
+      return {
+        id: ticket.id,
+        checkedIn: input.checkedIn,
+        checkedInAt,
+        changed: true,
+        name,
+        tierName,
       }
     }),
 })

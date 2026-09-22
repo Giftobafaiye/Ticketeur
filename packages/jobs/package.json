@@ -22,9 +22,9 @@
   "devDependencies": {
     "@ticketur/typescript-config": "workspace:*",
     "@trigger.dev/build": "4.6.3",
-    "@types/node": "^26.6.1",
+    "@types/node": "^26.6.2",
     "@types/react": "^19.3.0",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.2",
     "typescript": "^6.0.3"
   },
   "main": "./src/index.ts",

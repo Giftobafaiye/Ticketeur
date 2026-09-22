@@ -17,6 +17,7 @@ import {
   Money01Icon,
   Ticket01Icon,
   CheckmarkCircle02Icon,
+  QrCodeScanIcon,
   ArchiveIcon,
   Delete02Icon,
   MusicNote03Icon,
@@ -35,6 +36,7 @@ import { cn } from '@ticketur/ui/lib/utils'
 import { Button } from '@ticketur/ui/components/button'
 import { MarkdownView } from '@ticketur/ui/components/markdown-view'
 
+import { EventGuestList } from '@/components/dashboard/event-guest-list'
 import { useTRPC } from '@/lib/trpc'
 import { STATUS_LABEL, STATUS_TONE, type EventStatus } from '@/lib/org-events'
 import {
@@ -210,6 +212,19 @@ export function EventDetail({ id }: { id: string }) {
           Back
         </Link>
         <div className="flex items-center gap-3">
+          {status === 'upcoming' ? (
+            <Link
+              href={`/org/events/${event.id}/check-in`}
+              className="text-primary hover:text-primary/80 inline-flex items-center gap-1.5 text-sm font-semibold transition-colors"
+            >
+              <HugeiconsIcon
+                icon={QrCodeScanIcon}
+                className="size-4"
+                strokeWidth={2}
+              />
+              Check In
+            </Link>
+          ) : null}
           {showEdit ? (
             <Link
               href={`/org/events/${event.id}/edit`}
@@ -367,6 +382,10 @@ export function EventDetail({ id }: { id: string }) {
             </ul>
           </div>
         )}
+      </Section>
+
+      <Section title="Guest List">
+        <EventGuestList eventId={event.id} />
       </Section>
 
       {(vendors.length > 0 || externalInvites.length > 0) && (
