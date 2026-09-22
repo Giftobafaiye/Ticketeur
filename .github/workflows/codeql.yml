@@ -1,0 +1,54 @@
+name: CodeQL
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    # Weekly, so a new advisory or CodeQL query pack reaches `main` even
+    # without a push.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+# Least privilege: the scan only needs to read the repository, upload its
+# results as a SARIF analysis, and read the run that triggered it.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same ref so a new push doesn't wait behind
+# stale ones.
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - javascript-typescript
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@3ea06614dafe36dec890db3446326e0d40ce53d4 # v3
+        with:
+          languages: ${{ matrix.language }}
+          # JavaScript/TypeScript needs no build step for extraction.
+          build-mode: none
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@3ea06614dafe36dec890db3446326e0d40ce53d4 # v3
+        with:
+          category: "/language:${{ matrix.language }}"
