@@ -1,0 +1,28 @@
+# Dependabot configuration.
+#
+# Adding this file enables automated dependency *version* updates for the
+# ecosystems below and keeps them on a fixed schedule. The Dependabot
+# *alerts* and *security updates* toggles are repository settings and are
+# not controlled here.
+#
+# The repository is a pnpm workspace: `pnpm-lock.yaml` and
+# `pnpm-workspace.yaml` live at the repository root, so the npm ecosystem is
+# monitored once at "/". GitHub Actions usage is monitored separately so the
+# pinned action SHAs used by the workflows are kept current.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      npm:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
