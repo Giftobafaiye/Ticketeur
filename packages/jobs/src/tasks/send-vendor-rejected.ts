@@ -4,11 +4,11 @@ import VendorRejectedEmail from '@ticketur/email/emails/vendor-rejected'
 
 import { FROM_EMAIL } from '../constants'
 import { vendorRejectedSchema } from '../schema'
-import { resend } from '../utils/resend'
+import { sendEmail } from '../utils/resend'
 
 export const sendVendorRejectedTask = task({
   id: 'send-vendor-rejected',
-  run: async (payload: unknown) => {
+  run: async (payload: unknown, { ctx }) => {
     const data = vendorRejectedSchema.parse(payload)
 
     const html = await render(
@@ -19,11 +19,14 @@ export const sendVendorRejectedTask = task({
       })
     )
 
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: data.email,
-      subject: 'Your Ticketeur vendor application',
-      html,
-    })
+    await sendEmail(
+      {
+        from: FROM_EMAIL,
+        to: data.email,
+        subject: 'Your Ticketeur vendor application',
+        html,
+      },
+      ctx.run.id
+    )
   },
 })

@@ -4,11 +4,11 @@ import EventRejectedEmail from '@ticketur/email/emails/event-rejected'
 
 import { FROM_EMAIL } from '../constants'
 import { eventRejectedSchema } from '../schema'
-import { resend } from '../utils/resend'
+import { sendEmail } from '../utils/resend'
 
 export const sendEventRejectedTask = task({
   id: 'send-event-rejected',
-  run: async (payload: unknown) => {
+  run: async (payload: unknown, { ctx }) => {
     const data = eventRejectedSchema.parse(payload)
 
     const html = await render(
@@ -19,11 +19,14 @@ export const sendEventRejectedTask = task({
       })
     )
 
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: data.email,
-      subject: `${data.eventTitle} wasn't approved on Ticketeur`,
-      html,
-    })
+    await sendEmail(
+      {
+        from: FROM_EMAIL,
+        to: data.email,
+        subject: `${data.eventTitle} wasn't approved on Ticketeur`,
+        html,
+      },
+      ctx.run.id
+    )
   },
 })

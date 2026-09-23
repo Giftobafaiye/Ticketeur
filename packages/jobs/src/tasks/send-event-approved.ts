@@ -4,11 +4,11 @@ import EventApprovedEmail from '@ticketur/email/emails/event-approved'
 
 import { FROM_EMAIL } from '../constants'
 import { eventApprovedSchema } from '../schema'
-import { resend } from '../utils/resend'
+import { sendEmail } from '../utils/resend'
 
 export const sendEventApprovedTask = task({
   id: 'send-event-approved',
-  run: async (payload: unknown) => {
+  run: async (payload: unknown, { ctx }) => {
     const data = eventApprovedSchema.parse(payload)
 
     const html = await render(
@@ -22,11 +22,14 @@ export const sendEventApprovedTask = task({
       })
     )
 
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: data.email,
-      subject: `${data.eventTitle} is now live`,
-      html,
-    })
+    await sendEmail(
+      {
+        from: FROM_EMAIL,
+        to: data.email,
+        subject: `${data.eventTitle} is now live`,
+        html,
+      },
+      ctx.run.id
+    )
   },
 })
