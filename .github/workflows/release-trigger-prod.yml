@@ -62,6 +62,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Scan build configs for injected code
         run: pnpm check:configs
+      - name: Scan tracked files for committed secrets
+        run: pnpm check:secrets
       - name: Typecheck
         run: pnpm typecheck
       - name: Deploy to Trigger.dev
