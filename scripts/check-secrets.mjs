@@ -69,7 +69,7 @@ const SECRET_VALUE = [
   {
     why: 'password hash',
     re: /\$argon2(id|i|d)\$/,
-    sample: '$argon2id$v=19$m=65536,t=3,p=4$' + 'somethingsynthetic',
+    sample: '$argon2' + 'id$v=19$m=65536,t=3,p=4$somethingsynthetic',
   },
   {
     why: 'private key block',
@@ -187,7 +187,9 @@ function selfCheck() {
   const literalSamples = [
     'app_password = "abcd efgh ijkl mnop"',
     '"api_token": "p8F2kQ9zR4xT7mL1wB6nV3yJ"',
-    'db_url = "postgresql://app:Tr0ub4dor3xampl3@db.internal:5432/app"',
+    'db_url = "postgresql://app:' +
+      'Tr0ub4dor3xampl3' +
+      '@db.internal:5432/app"',
   ]
   for (const line of literalSamples) {
     if (findSecretViolations(line, true).length === 0) {
