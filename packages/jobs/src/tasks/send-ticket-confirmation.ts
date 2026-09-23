@@ -4,11 +4,11 @@ import TicketConfirmationEmail from '@ticketur/email/emails/ticket-confirmation'
 
 import { FROM_EMAIL } from '../constants'
 import { ticketConfirmationSchema } from '../schema'
-import { resend } from '../utils/resend'
+import { sendEmail } from '../utils/resend'
 
 export const sendTicketConfirmationTask = task({
   id: 'send-ticket-confirmation',
-  run: async (payload: unknown) => {
+  run: async (payload: unknown, { ctx }) => {
     const data = ticketConfirmationSchema.parse(payload)
 
     const html = await render(
@@ -44,12 +44,15 @@ export const sendTicketConfirmationTask = task({
       }
     }
 
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: data.email,
-      subject: `🎟 Your ${data.eventTitle} ticket${data.quantity === 1 ? '' : 's'}`,
-      html,
-      ...(attachment ? { attachments: [attachment] } : {}),
-    })
+    await sendEmail(
+      {
+        from: FROM_EMAIL,
+        to: data.email,
+        subject: `🎟 Your ${data.eventTitle} ticket${data.quantity === 1 ? '' : 's'}`,
+        html,
+        ...(attachment ? { attachments: [attachment] } : {}),
+      },
+      ctx.run.id
+    )
   },
 })

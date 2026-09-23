@@ -4,20 +4,23 @@ import AccountReactivatedEmail from '@ticketur/email/emails/account-reactivated'
 
 import { FROM_EMAIL } from '../constants'
 import { accountReactivatedSchema } from '../schema'
-import { resend } from '../utils/resend'
+import { sendEmail } from '../utils/resend'
 
 export const sendAccountReactivatedTask = task({
   id: 'send-account-reactivated',
-  run: async (payload: unknown) => {
+  run: async (payload: unknown, { ctx }) => {
     const data = accountReactivatedSchema.parse(payload)
 
     const html = await render(AccountReactivatedEmail({ name: data.name }))
 
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: data.email,
-      subject: 'Your Ticketeur account is active again',
-      html,
-    })
+    await sendEmail(
+      {
+        from: FROM_EMAIL,
+        to: data.email,
+        subject: 'Your Ticketeur account is active again',
+        html,
+      },
+      ctx.run.id
+    )
   },
 })

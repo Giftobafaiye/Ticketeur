@@ -4,11 +4,11 @@ import VendorInviteEmail from '@ticketur/email/emails/vendor-invite'
 
 import { FROM_EMAIL } from '../constants'
 import { vendorInviteSchema } from '../schema'
-import { resend } from '../utils/resend'
+import { sendEmail } from '../utils/resend'
 
 export const sendVendorInviteTask = task({
   id: 'send-vendor-invite',
-  run: async (payload: unknown) => {
+  run: async (payload: unknown, { ctx }) => {
     const data = vendorInviteSchema.parse(payload)
 
     const html = await render(
@@ -21,11 +21,14 @@ export const sendVendorInviteTask = task({
       })
     )
 
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: data.email,
-      subject: `You're invited to ${data.eventTitle}`,
-      html,
-    })
+    await sendEmail(
+      {
+        from: FROM_EMAIL,
+        to: data.email,
+        subject: `You're invited to ${data.eventTitle}`,
+        html,
+      },
+      ctx.run.id
+    )
   },
 })

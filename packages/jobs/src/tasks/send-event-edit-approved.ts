@@ -4,11 +4,11 @@ import EventEditApprovedEmail from '@ticketur/email/emails/event-edit-approved'
 
 import { FROM_EMAIL } from '../constants'
 import { eventEditApprovedSchema } from '../schema'
-import { resend } from '../utils/resend'
+import { sendEmail } from '../utils/resend'
 
 export const sendEventEditApprovedTask = task({
   id: 'send-event-edit-approved',
-  run: async (payload: unknown) => {
+  run: async (payload: unknown, { ctx }) => {
     const data = eventEditApprovedSchema.parse(payload)
 
     const html = await render(
@@ -20,11 +20,14 @@ export const sendEventEditApprovedTask = task({
       })
     )
 
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: data.email,
-      subject: `Your changes to ${data.eventTitle} are live`,
-      html,
-    })
+    await sendEmail(
+      {
+        from: FROM_EMAIL,
+        to: data.email,
+        subject: `Your changes to ${data.eventTitle} are live`,
+        html,
+      },
+      ctx.run.id
+    )
   },
 })

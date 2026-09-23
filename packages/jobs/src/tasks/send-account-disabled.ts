@@ -4,11 +4,11 @@ import AccountDisabledEmail from '@ticketur/email/emails/account-disabled'
 
 import { FROM_EMAIL } from '../constants'
 import { accountDisabledSchema } from '../schema'
-import { resend } from '../utils/resend'
+import { sendEmail } from '../utils/resend'
 
 export const sendAccountDisabledTask = task({
   id: 'send-account-disabled',
-  run: async (payload: unknown) => {
+  run: async (payload: unknown, { ctx }) => {
     const data = accountDisabledSchema.parse(payload)
 
     const html = await render(
@@ -18,11 +18,14 @@ export const sendAccountDisabledTask = task({
       })
     )
 
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: data.email,
-      subject: 'Your Ticketeur account has been disabled',
-      html,
-    })
+    await sendEmail(
+      {
+        from: FROM_EMAIL,
+        to: data.email,
+        subject: 'Your Ticketeur account has been disabled',
+        html,
+      },
+      ctx.run.id
+    )
   },
 })
