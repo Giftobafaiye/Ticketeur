@@ -4,7 +4,7 @@ import { sendVerificationOtpEmail } from '../send-emails'
 
 export const sendVerificationOtpTask = task({
   id: 'send-verification-otp',
-  run: async (payload: unknown) => {
-    await sendVerificationOtpEmail(payload)
+  run: async (payload: unknown, { ctx }) => {
+    await sendVerificationOtpEmail(payload, ctx.run.id)
   },
 })
