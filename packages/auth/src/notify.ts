@@ -58,24 +58,46 @@ async function enqueue(
   }
 }
 
+/**
+ * The direct send runs outside a Trigger.dev run, so it has no `ctx.run.id` to
+ * use as a Resend idempotency key. Derive a deterministic key from the
+ * recipient and the message's unique content instead: a retry of the same send
+ * reuses the key and cannot deliver the message twice, while a genuine later
+ * send (a fresh OTP or reset token) carries a different key and still goes out.
+ */
+function directIdempotencyKey(kind: string, ...parts: string[]) {
+  return ['auth', kind, ...parts].join(':')
+}
+
 export function dispatchVerificationOtp(payload: VerificationOtpPayload) {
   return enqueue('send-verification-otp', payload, () =>
-    sendVerificationOtpEmail(payload)
+    sendVerificationOtpEmail(
+      payload,
+      directIdempotencyKey('verification-otp', payload.email, payload.otp)
+    )
   )
 }
 
 export function dispatchTwoFactorOtp(payload: TwoFactorOtpPayload) {
   return enqueue('send-two-factor-otp', payload, () =>
-    sendTwoFactorOtpEmail(payload)
+    sendTwoFactorOtpEmail(
+      payload,
+      directIdempotencyKey('two-factor-otp', payload.email, payload.otp)
+    )
   )
 }
 
 export function dispatchPasswordReset(payload: PasswordResetPayload) {
   return enqueue('send-password-reset', payload, () =>
-    sendPasswordResetEmail(payload)
+    sendPasswordResetEmail(
+      payload,
+      directIdempotencyKey('password-reset', payload.email, payload.resetUrl)
+    )
   )
 }
 
 export function dispatchWelcome(payload: WelcomePayload) {
-  return enqueue('send-welcome', payload, () => sendWelcomeEmail(payload))
+  return enqueue('send-welcome', payload, () =>
+    sendWelcomeEmail(payload, directIdempotencyKey('welcome', payload.email))
+  )
 }
