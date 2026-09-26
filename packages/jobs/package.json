@@ -13,19 +13,19 @@
     "@ticketur/db": "workspace:*",
     "@ticketur/email": "workspace:*",
     "@ticketur/env": "workspace:*",
-    "@trigger.dev/sdk": "4.6.3",
+    "@trigger.dev/sdk": "4.6.4",
     "react": "^19.3.0",
     "resend": "^6.28.1",
-    "trigger.dev": "^4.6.3",
+    "trigger.dev": "^4.6.4",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@ticketur/typescript-config": "workspace:*",
-    "@trigger.dev/build": "4.6.3",
+    "@trigger.dev/build": "4.6.4",
     "@types/node": "^26.6.2",
     "@types/react": "^19.3.0",
-    "dotenv": "^18.0.2",
-    "typescript": "^6.0.3"
+    "dotenv": "^18.0.3",
+    "typescript": "^7.0.2"
   },
   "main": "./src/index.ts",
   "types": "./src/index.ts",

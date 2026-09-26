@@ -14,7 +14,7 @@
   "dependencies": {
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "typescript": "6.0.3"
+    "typescript": "7.0.2"
   },
   "devDependencies": {
     "@react-email/ui": "6.9.5",
