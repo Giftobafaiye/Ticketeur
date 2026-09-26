@@ -1,0 +1,10 @@
+# Require the repository owner's review for the build-config injection guard and
+# every surface it scans or executes from, so a change cannot weaken the guard
+# and land in the same unreviewed merge it would otherwise let through.
+#
+# This file is a prerequisite only: GitHub applies CODEOWNERS review requests
+# once a repository administrator enables a branch ruleset / branch protection
+# that requires code-owner review. Until then it still routes every change here
+# to the owner as a requested reviewer.
+/scripts/  @Giftobafaiye
+/.github/  @Giftobafaiye
