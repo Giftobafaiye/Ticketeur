@@ -1,181 +1,183 @@
 import type { Metadata } from 'next'
-import type { ReactNode } from 'react'
-import Image from 'next/image'
+import Link from 'next/link'
 
+import { montserrat, workSans } from './fonts'
 import {
-  TERMS_EFFECTIVE_DATE,
-  TERMS_LAST_UPDATED,
-  TERMS_PREAMBLE,
-  TERMS_SECTIONS,
-  type TermsBlock,
-} from './terms-content'
+  TERMS_OVERVIEW_LAST_UPDATED,
+  TERMS_OVERVIEW_SECTIONS,
+  type OverviewBlock,
+  type OverviewLine,
+} from './terms-overview-content'
 
 export const metadata: Metadata = {
-  title: 'Terms of Service',
+  title: 'Terms and conditions',
   description:
-    'The terms that govern your access to and use of the Ticketeur platform.',
+    'A plain-English guide to how Ticketeur works for attendees, organisers and vendors — and where to find the full legal terms.',
 }
 
-const BODY =
-  'font-heading text-foreground/90 text-base leading-7 md:text-lg md:leading-8'
-const LIST = `${BODY} ml-5 flex list-disc flex-col gap-1.5`
+// Noise overlay for the two hero circles, exported from the design.
+const HERO_TEXTURE = '/terms-hero-texture.png'
+
+const HEADING_FONT = 'font-[family-name:var(--font-terms-heading)]'
+const H2 = `${HEADING_FONT} text-[24px] leading-[32px] font-bold text-[#282828]`
+const H3 = `${HEADING_FONT} text-[20px] leading-[28px] font-bold text-[#282828]`
+const H4 = `${HEADING_FONT} text-[18px] leading-[24px] font-bold text-[#282828]`
+
+// Spelled out rather than interpolated so Tailwind can see the class names.
+const BLOCK_GAP = { 12: 'gap-3', 16: 'gap-4', 32: 'gap-8' } as const
 
 export default function TermsPage() {
   return (
-    <>
-      <section
-        aria-label="Terms of service header"
-        className="relative isolate flex min-h-[360px] w-full items-center justify-center overflow-hidden md:min-h-[546px]"
-      >
-        <Image
-          src="/legal.png"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
-        <div aria-hidden className="absolute inset-0 bg-black/50" />
-        <div className="relative z-10 mx-auto flex w-full max-w-360 flex-col items-center gap-3 px-6 py-20 text-center md:py-24">
-          <h1 className="font-heading text-4xl leading-tight font-bold tracking-tight text-white sm:text-5xl md:text-[56px] md:leading-[1.2]">
-            Terms of Service
-          </h1>
-          <p className="font-heading text-base font-semibold text-white/90 md:text-xl">
-            Last updated: {TERMS_LAST_UPDATED}
-          </p>
-        </div>
-      </section>
+    <div className={`${workSans.variable} ${montserrat.variable} bg-white`}>
+      <TermsHero />
 
-      <article className="mx-auto w-full max-w-[823px] px-6 py-16 md:py-20">
-        <p className="text-muted-foreground text-sm font-medium">
-          Effective Date: {TERMS_EFFECTIVE_DATE} · Last Updated:{' '}
-          {TERMS_LAST_UPDATED}
-        </p>
+      <article className="mx-auto flex w-full max-w-[987px] flex-col gap-16 px-6 pt-16 pb-24 font-[family-name:var(--font-terms-body)] md:pt-[84px] md:pb-[100px]">
+        {TERMS_OVERVIEW_SECTIONS.map((section) => (
+          <section
+            key={section.id}
+            id={section.id}
+            className="flex scroll-mt-28 flex-col gap-14"
+          >
+            <h2 className={H2}>{section.heading}</h2>
 
-        <div className="mt-6 flex flex-col gap-4">
-          {TERMS_PREAMBLE.map((para, i) => (
-            <p
-              key={i}
-              className={
-                i === 0
-                  ? 'font-heading text-foreground/90 text-lg leading-7 md:text-xl md:leading-8'
-                  : BODY
-              }
-            >
-              {para}
-            </p>
-          ))}
-        </div>
-
-        <div className="mt-10 flex flex-col gap-9 md:gap-10">
-          {TERMS_SECTIONS.map((section) => (
-            <section key={section.n} className="flex flex-col gap-3.5">
-              <h2 className="font-heading text-foreground text-lg font-bold tracking-tight md:text-xl">
-                {section.n}. {section.title}
-              </h2>
-              {section.blocks.map((block, i) => (
-                <Block key={blockKey(section.n, block, i)} block={block} />
+            <div className="flex flex-col gap-12">
+              {section.groups.map((group, groupIndex) => (
+                <div
+                  key={`${section.id}-group-${groupIndex}`}
+                  className={`flex flex-col ${BLOCK_GAP[section.blockGap ?? 32]}`}
+                >
+                  {group.map((block, blockIndex) => (
+                    <Block
+                      key={`${section.id}-${groupIndex}-${blockIndex}`}
+                      block={block}
+                    />
+                  ))}
+                </div>
               ))}
-            </section>
-          ))}
-        </div>
+            </div>
+          </section>
+        ))}
       </article>
-    </>
+    </div>
   )
 }
 
-function blockKey(sectionN: string, block: TermsBlock, i: number) {
-  if (block.kind === 'clause') return `${sectionN}-${block.n}`
-  return `${sectionN}-${block.kind}-${i}`
+function TermsHero() {
+  return (
+    <section
+      aria-label="Terms and conditions"
+      className="relative isolate flex w-full items-center justify-center overflow-hidden bg-[#31156B] px-6 py-20 md:h-[581px] md:py-0"
+    >
+      {/* Two 811px circles bleeding off either edge, positioned against the
+          1440px design canvas so the composition holds on wider screens. */}
+      <HeroCircle className="top-[90px] left-[-565px] md:left-[calc(50%-1285px)]" />
+      <HeroCircle className="top-[117px] left-[calc(100%-200px)] md:left-[calc(50%+517px)]" />
+
+      <div className="relative z-10 flex w-full max-w-[801px] flex-col items-center gap-6 text-center">
+        <h1 className="font-heading text-[32px] leading-[1.2] font-bold text-white sm:text-[44px] md:text-[56px]">
+          Terms and conditions
+        </h1>
+        <p className="font-heading text-base leading-[28px] font-semibold text-[#E2E8F0] md:text-[20px]">
+          Last updated: {TERMS_OVERVIEW_LAST_UPDATED}
+        </p>
+      </div>
+    </section>
+  )
 }
 
-function Block({ block }: { block: TermsBlock }) {
+function HeroCircle({ className }: { className: string }) {
+  return (
+    <div
+      aria-hidden
+      className={`pointer-events-none absolute size-[811px] rounded-full mix-blend-overlay ${className}`}
+    >
+      <div
+        className="size-full rounded-full bg-cover bg-center opacity-50"
+        style={{ backgroundImage: `url(${HERO_TEXTURE})` }}
+      />
+    </div>
+  )
+}
+
+function Block({ block }: { block: OverviewBlock }) {
   switch (block.kind) {
-    case 'lead':
-      return <p className={BODY}>{block.text}</p>
+    case 'h3':
+      return <h3 className={H3}>{block.text}</h3>
 
-    case 'clause':
+    case 'h4':
+      return <h4 className={H4}>{block.text}</h4>
+
+    case 'body':
+      return <BodyLines lines={block.lines} />
+
+    case 'link':
       return (
-        <div className="flex flex-col gap-2">
-          <p className={BODY}>
-            <span className="text-foreground font-semibold">{block.n}</span>{' '}
-            {block.text}
-          </p>
-          {block.items ? <BulletList items={block.items} /> : null}
-        </div>
-      )
-
-    case 'list':
-      return <BulletList items={block.items} />
-
-    case 'sub':
-      return (
-        <div className="flex flex-col gap-2">
-          <h3 className="font-heading text-foreground text-base font-semibold md:text-lg">
-            {block.title}
-          </h3>
-          <p className={BODY}>{block.lead}</p>
-          <BulletList items={block.items} />
-          {block.tail ? <p className={BODY}>{block.tail}</p> : null}
-        </div>
-      )
-
-    case 'contact':
-      return (
-        <div className="border-border/70 bg-muted/30 mt-1 flex flex-col gap-1 rounded-xl border p-4 md:p-5">
-          {block.lines.map((line, i) => (
-            <ContactLine key={i} line={line} />
-          ))}
-        </div>
+        <p className="text-[16px] leading-[24px] font-bold text-[#282828]">
+          {block.lead}
+          <TermsLink href={block.href} label={block.label} />
+        </p>
       )
   }
 }
 
-function BulletList({ items }: { items: string[] }) {
+// One body block. Lines stack with no gap of their own — the 2.0 line height
+// supplies the rhythm, and `gap` lines add a blank line where the design has
+// one.
+function BodyLines({ lines }: { lines: OverviewLine[] }) {
   return (
-    <ul className={LIST}>
-      {items.map((item) => (
-        <li key={item}>{item}</li>
-      ))}
-    </ul>
+    <div className="text-[14px] leading-[2] text-[#424242]">
+      {lines.map((line, i) => {
+        const key = `${line.t}-${i}`
+
+        switch (line.t) {
+          case 'p':
+            return <p key={key}>{line.text}</p>
+
+          case 'b':
+            return (
+              <p key={key} className="font-bold">
+                {line.text}
+              </p>
+            )
+
+          case 'lead':
+            return (
+              <p key={key} className="text-[16px] font-bold">
+                {line.text}
+              </p>
+            )
+
+          case 'gap':
+            return <div key={key} aria-hidden className="h-7" />
+
+          case 'ol':
+            return (
+              <ol key={key} className="list-decimal ps-[21px]">
+                {line.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ol>
+            )
+
+          case 'link':
+            return (
+              <p key={key} className="text-[16px] font-bold">
+                <TermsLink href={line.href} label={line.label} />
+              </p>
+            )
+        }
+      })}
+    </div>
   )
 }
 
-function ContactLine({ line }: { line: string }) {
-  const sep = line.indexOf(': ')
-  if (sep === -1) {
-    return <p className="text-foreground text-sm font-semibold">{line}</p>
-  }
-  const label = line.slice(0, sep)
-  const value = line.slice(sep + 2)
-
-  let valueNode: ReactNode = value
-  if (label === 'Email') {
-    valueNode = (
-      <a
-        href={`mailto:${value}`}
-        className="text-primary font-medium hover:underline"
-      >
-        {value}
-      </a>
-    )
-  } else if (label === 'Website') {
-    valueNode = (
-      <a
-        href={value}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-primary font-medium hover:underline"
-      >
-        {value.replace(/^https?:\/\//, '').replace(/\/$/, '')}
-      </a>
-    )
-  }
-
+function TermsLink({ href, label }: { href: string; label: string }) {
   return (
-    <p className="text-foreground/90 text-sm md:text-base">
-      <span className="text-muted-foreground font-medium">{label}:</span>{' '}
-      {valueNode}
-    </p>
+    <Link
+      href={href}
+      className="text-[#7433FF] underline decoration-solid underline-offset-2 transition-opacity hover:opacity-75"
+    >
+      {label}
+    </Link>
   )
 }
