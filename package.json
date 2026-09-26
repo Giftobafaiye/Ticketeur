@@ -8,7 +8,8 @@
     "lint": "turbo lint",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
-    "check:configs": "node scripts/check-build-configs.mjs"
+    "check:configs": "node scripts/check-build-configs.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs"
   },
   "devDependencies": {
     "@ticketur/eslint-config": "workspace:*",
