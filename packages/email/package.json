@@ -17,11 +17,11 @@
     "typescript": "6.0.3"
   },
   "devDependencies": {
-    "@react-email/ui": "6.9.5",
+    "@react-email/ui": "6.11.0",
     "@ticketur/typescript-config": "workspace:*",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "react-email": "^6.9.5",
+    "react-email": "^6.11.0",
     "wawoff2": "^2.0.1"
   }
 }

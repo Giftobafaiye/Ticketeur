@@ -19,6 +19,9 @@ export type TermsBlock =
 export type TermsSection = {
   n: string
   title: string
+  // Stable `id` for deep links from the plain-English overview at /terms.
+  // Falls back to `section-{n}`, which moves if the legal numbering ever does.
+  anchor?: string
   blocks: TermsBlock[]
 }
 
@@ -654,6 +657,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
   {
     n: '41',
     title: 'Contact Information',
+    anchor: 'contact',
     blocks: [
       { kind: 'lead', text: 'For questions, complaints, support requests or legal notices concerning these Terms, please contact:' },
       {
