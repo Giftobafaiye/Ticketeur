@@ -20,7 +20,45 @@ import { logActivity } from '../lib/activity'
 import { getBaseUrl } from '../lib/base-url'
 import { applyEventEdit, assertEventEditAllowed } from '../lib/events'
 
-const eventStatusEnum = z.enum(['draft', 'in-review', 'upcoming', 'archived'])
+// ─── Creating an event: the status it starts in ────────────────────────────
+//
+// An event on the public site is one an admin approved. Every moderation
+// control hangs off that: the public listings filter `status = 'upcoming'`,
+// and a registration form can never be more visible than its event (see
+// public/forms.ts). So the status a new event is stored with is decided here,
+// by the server, from the caller's role — it is not whatever the client sent.
+//
+// What a client may ask for. 'archived' is not a state you create something
+// in, and there is no 'suspended' here either: that is an admin verdict on an
+// existing event, never an opening position.
+const createStatusEnum = z.enum(['draft', 'in-review', 'upcoming'])
+
+// The status actually stored. An allow-list: anything this doesn't name
+// explicitly lands in the review queue, so a value added to EventStatus later
+// cannot go live by default.
+//
+//   'draft'    — saved privately, visible to nobody, for anyone. A draft is
+//                the organizer's own workspace; `events.publish` moves it on
+//                to 'in-review', never straight to live.
+//   'upcoming' — live on the public site. Admins only, mirroring the bypass
+//                `events.update` already grants them ("they are the
+//                moderators"). Narrow on purpose: `create` always sets
+//                organizerId to the caller, so this lets an admin publish
+//                their own event and nobody else's — unlike registration
+//                forms, where managesEvent would let an admin push another
+//                organizer's content live unseen, which is why form-review.ts
+//                refuses an admin bypass there. And it grants no new power:
+//                an admin can already put any event live in one call with
+//                admin.moderation.approveEvent.
+//   anything else, from anyone — 'in-review', the admin queue.
+function resolveCreateStatus(
+  role: string | null | undefined,
+  requested: z.infer<typeof createStatusEnum>
+): 'draft' | 'in-review' | 'upcoming' {
+  if (requested === 'draft') return 'draft'
+  if (requested === 'upcoming' && role === 'admin') return 'upcoming'
+  return 'in-review'
+}
 
 const ticketTierInput = z.object({
   name: z.string().trim().min(1),
@@ -58,7 +96,9 @@ const createEventInput = z.object({
       })
     )
     .default([]),
-  status: eventStatusEnum.default('in-review'),
+  // A request, not an instruction: resolveCreateStatus decides what is
+  // stored. An organizer asking to go live is answered with the review queue.
+  status: createStatusEnum.default('in-review'),
 })
 
 // Editing never changes an event's status directly (publishing is a separate
@@ -119,6 +159,9 @@ export const eventsRouter = createTRPCRouter({
       // Slug is derived from the title server-side (never client-supplied),
       // with -2/-3 suffixes appended on collision.
       const slug = await generateUniqueEventSlug(ctx.db, input.title)
+      // Likewise the status: see resolveCreateStatus above. An organizer
+      // cannot put an event on the public site, whatever they send.
+      const status = resolveCreateStatus(ctx.session.user.role, input.status)
 
       await ctx.db.transaction(async (tx) => {
         await tx.insert(events).values({
@@ -136,7 +179,7 @@ export const eventsRouter = createTRPCRouter({
           location: input.location,
           bannerUrl: input.bannerUrl ?? null,
           features: input.features,
-          status: input.status,
+          status,
         })
 
         if (input.tiers.length > 0) {
@@ -286,7 +329,9 @@ export const eventsRouter = createTRPCRouter({
         payload: { title: input.title },
       })
 
-      return { id: eventId }
+      // The status it actually got, not the one that was asked for, so the
+      // caller tells the organizer the truth ("sent for review", not "live").
+      return { id: eventId, status }
     }),
 
   update: organizerProcedure
@@ -428,6 +473,7 @@ export const eventsRouter = createTRPCRouter({
           id: events.id,
           organizerId: events.organizerId,
           title: events.title,
+          status: events.status,
         })
         .from(events)
         .where(eq(events.id, input.id))
@@ -439,6 +485,21 @@ export const eventsRouter = createTRPCRouter({
         ctx.session.user.role !== 'admin'
       ) {
         throw new TRPCError({ code: 'FORBIDDEN' })
+      }
+
+      // Archiving is the organizer clearing their own active list. It must not
+      // double as a way out of moderation: an admin-suspended event that
+      // archived itself would reappear publicly once its date passed, because
+      // the past tab lists 'archived' (public/events.ts). The dashboard only
+      // offers Archive on a live event; this is that same rule, enforced.
+      if (ev.status !== 'upcoming') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message:
+            ev.status === 'suspended'
+              ? 'This event has been suspended by Ticketeur and cannot be archived. Please contact support.'
+              : 'Only a live event can be archived.',
+        })
       }
 
       await ctx.db
@@ -464,6 +525,7 @@ export const eventsRouter = createTRPCRouter({
           id: events.id,
           organizerId: events.organizerId,
           title: events.title,
+          status: events.status,
         })
         .from(events)
         .where(eq(events.id, input.id))
@@ -475,6 +537,44 @@ export const eventsRouter = createTRPCRouter({
         ctx.session.user.role !== 'admin'
       ) {
         throw new TRPCError({ code: 'FORBIDDEN' })
+      }
+
+      // Deleting an event cascades: orders, order_items, tickets, ticket_tiers,
+      // forms, form_fields, form_price_options, submissions, vouchers and
+      // vendor links all go with it — every one of those FKs is ON DELETE
+      // cascade. So it is guarded twice.
+      //
+      // 1. Only from the two states the dashboard offers Delete in. Without
+      //    this, a suspended event could be erased outright rather than
+      //    answered for.
+      if (ev.status !== 'draft' && ev.status !== 'archived') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message:
+            ev.status === 'suspended'
+              ? 'This event has been suspended by Ticketeur and cannot be deleted. Please contact support.'
+              : 'Archive this event before deleting it.',
+        })
+      }
+
+      // 2. Never destroy the record of money that changed hands. A draft can't
+      //    have sales, so this only bites on an archived event that sold —
+      //    precisely the case where the cascade would take paid orders and the
+      //    tickets their buyers are holding with it.
+      const [paidOrders] = await ctx.db
+        .select({ n: sql<number>`COUNT(*)::int` })
+        .from(orders)
+        .where(and(eq(orders.eventId, input.id), eq(orders.status, 'paid')))
+      const [issuedTickets] = await ctx.db
+        .select({ n: sql<number>`COUNT(*)::int` })
+        .from(tickets)
+        .where(eq(tickets.eventId, input.id))
+      if ((paidOrders?.n ?? 0) > 0 || (issuedTickets?.n ?? 0) > 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message:
+            'This event has sold tickets, so it cannot be deleted — the orders and the tickets people are holding are financial records. It stays archived instead.',
+        })
       }
 
       await ctx.db.delete(events).where(eq(events.id, input.id))

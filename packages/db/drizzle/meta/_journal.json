@@ -176,6 +176,20 @@
       "when": 1790950025056,
       "tag": "0024_form_review",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790971671322,
+      "tag": "0025_platform_fees_and_payment_discrepancies",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790984878197,
+      "tag": "0026_contests_and_voting",
+      "breakpoints": true
     }
   ]
 }

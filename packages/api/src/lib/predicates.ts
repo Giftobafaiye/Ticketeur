@@ -1,6 +1,15 @@
-import { and, eq, ne, sql } from 'drizzle-orm'
+import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 
-import { events, forms, orderItems, orders, reports, user } from '@ticketur/db'
+import {
+  contests,
+  events,
+  forms,
+  orderItems,
+  orders,
+  paymentDiscrepancies,
+  reports,
+  user,
+} from '@ticketur/db'
 
 // ─── Visibility ─────────────────────────────────────────────────────────────
 
@@ -54,4 +63,20 @@ export const EVENT_EDIT_PENDING = sql`${events.pendingChanges} IS NOT NULL`
 export const REPORT_OPEN = eq(reports.status, 'open')
 // A registration form waiting for an admin to approve its questions.
 export const FORM_PENDING = eq(forms.status, 'pending_review')
+// A registration form the public can reach: taking submissions, or closed
+// with its page (and so its title and description) still up. The same
+// allow-list the public lookup uses, and what admin.moderation.takeDownForm
+// can act on. 'suspended' is deliberately absent — that IS the taken-down
+// state.
+export const FORM_PUBLIC = inArray(forms.status, ['published', 'closed'])
+// A contest waiting for an admin to approve its ballot and its prices. The
+// same word, the same meaning, as FORM_PENDING — see lib/contest-review.ts.
+export const CONTEST_PENDING = eq(contests.status, 'pending_review')
+// A contest the public can reach: taking votes, or closed with its results
+// page still up. Deliberately the SAME allow-list `loadPublicContest` uses
+// (routers/public/contests.ts), and what admin.moderation.takeDownContest can
+// act on. 'suspended' is absent because that IS the taken-down state.
+export const CONTEST_PUBLIC = inArray(contests.status, ['published', 'closed'])
 export const PAID = eq(orders.status, 'paid')
+// A payment discrepancy nobody has recorded a refund for yet.
+export const DISCREPANCY_OPEN = eq(paymentDiscrepancies.status, 'open')

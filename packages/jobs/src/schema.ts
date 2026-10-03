@@ -188,6 +188,20 @@ export const formRejectedSchema = z.object({
   manageUrl: z.url(),
 })
 export type FormRejectedPayload = z.infer<typeof formRejectedSchema>
+
+// An admin took a form that was already public off the platform. Same shape as
+// a rejection, different message: this form was live, so the organizer is told
+// it has been pulled down rather than that it wasn't approved.
+export const formTakenDownSchema = z.object({
+  email: z.email(),
+  organizerName: z.string(),
+  formTitle: z.string(),
+  eventTitle: z.string(),
+  // Required: an admin can't take a form down without saying why.
+  reason: z.string().min(1),
+  manageUrl: z.url(),
+})
+export type FormTakenDownPayload = z.infer<typeof formTakenDownSchema>
 // ─── Registration form submissions ─────────────────────────────────────────
 // Sent to the applicant. The API triggers these from packages/api/src/lib/
 // form-emails.ts: the confirmation once a submission is complete (on submit
@@ -230,6 +244,9 @@ export const submissionRejectedSchema = z.object({
   reference: z.string(),
   // The organizer's reason, written for the applicant.
   reason: z.string().default(''),
+  // The registration fee we are holding for an application that was turned
+  // down, in kobo. Defaults to 0 so an older queued payload still parses.
+  refundOwedMinor: z.number().int().min(0).default(0),
 })
 
 export type SubmissionConfirmationPayload = z.infer<
@@ -237,3 +254,97 @@ export type SubmissionConfirmationPayload = z.infer<
 >
 export type SubmissionApprovedPayload = z.infer<typeof submissionApprovedSchema>
 export type SubmissionRejectedPayload = z.infer<typeof submissionRejectedSchema>
+
+// The receipt for a vote purchase.
+export const votePurchaseSchema = z.object({
+  email: z.email(),
+  voterName: z.string(),
+  contestTitle: z.string(),
+  eventTitle: z.string(),
+  votesGranted: z.number().int().min(0),
+  votesRemaining: z.number().int().min(0),
+  // Pre-formatted and inclusive of the service fee, so the email cannot
+  // disagree with what was charged.
+  amountPaid: z.string(),
+  contestUrl: z.string(),
+  // Voting had already closed when the payment cleared: the credits cannot be
+  // spent and the money is owed back.
+  unusable: z.boolean().default(false),
+})
+export type VotePurchasePayload = z.infer<typeof votePurchaseSchema>
+
+// The one-time code that proves the email behind a FREE vote
+// (packages/api/src/lib/vote-otp.ts). The plaintext code travels in this
+// payload because the database holds only a scrypt digest of it — there is
+// nowhere for the task to load it back from.
+export const voteCodeSchema = z.object({
+  email: z.email(),
+  // Six digits as a string, so a leading zero survives the round trip.
+  code: z.string().regex(/^\d{4,8}$/),
+  contestTitle: z.string(),
+  eventTitle: z.string(),
+  contestUrl: z.string(),
+  // Minutes the code is good for, from VOTE_CODE_TTL_MINUTES, so the email
+  // and the verifier cannot disagree about how long the voter has.
+  expiresInMinutes: z.number().int().min(1).default(10),
+})
+export type VoteCodePayload = z.infer<typeof voteCodeSchema>
+
+// The one-time code that proves the email behind a NOMINATION
+// (packages/api/src/routers/public/nominations.ts). The same `vote_otps`
+// machinery and the same shape as the free-vote code above — a separate
+// payload only because the email it renders says something different: a
+// nominator is putting a name forward, not casting a vote.
+export const nominationCodeSchema = z.object({
+  email: z.email(),
+  // Six digits as a string, so a leading zero survives the round trip.
+  code: z.string().regex(/^\d{4,8}$/),
+  contestTitle: z.string(),
+  eventTitle: z.string(),
+  contestUrl: z.string(),
+  // Minutes the code is good for, from VOTE_CODE_TTL_MINUTES.
+  expiresInMinutes: z.number().int().min(1).default(10),
+})
+export type NominationCodePayload = z.infer<typeof nominationCodeSchema>
+
+// ─── Contest review ────────────────────────────────────────────────────────
+// Sent to the organizer when an admin decides a contest
+// (packages/api/src/lib/contest-emails.ts). The same three shapes as the form
+// review emails above, for the same three decisions, because a contest is
+// moderated by the same machinery (packages/api/src/lib/contest-review.ts).
+
+export const contestApprovedSchema = z.object({
+  email: z.email(),
+  organizerName: z.string(),
+  contestTitle: z.string(),
+  eventTitle: z.string(),
+  publicUrl: z.url(),
+  manageUrl: z.url(),
+})
+export type ContestApprovedPayload = z.infer<typeof contestApprovedSchema>
+
+export const contestRejectedSchema = z.object({
+  email: z.email(),
+  organizerName: z.string(),
+  contestTitle: z.string(),
+  eventTitle: z.string(),
+  // Required: an admin can't reject a contest without saying why.
+  reason: z.string().min(1),
+  manageUrl: z.url(),
+})
+export type ContestRejectedPayload = z.infer<typeof contestRejectedSchema>
+
+// An admin took a contest that was already public off the platform. Same
+// shape as a rejection, different message: this contest was live and taking
+// money, so the organizer is told it has been pulled down rather than that it
+// wasn't approved.
+export const contestTakenDownSchema = z.object({
+  email: z.email(),
+  organizerName: z.string(),
+  contestTitle: z.string(),
+  eventTitle: z.string(),
+  // Required: an admin can't take a contest down without saying why.
+  reason: z.string().min(1),
+  manageUrl: z.url(),
+})
+export type ContestTakenDownPayload = z.infer<typeof contestTakenDownSchema>

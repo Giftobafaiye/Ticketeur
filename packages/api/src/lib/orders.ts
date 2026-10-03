@@ -27,7 +27,19 @@ import {
   PAYMENT_CURRENCY,
   toFlutterwaveAmount,
 } from './payment-amount'
+import {
+  chargeAmountMinor,
+  recordDiscrepancy,
+  recordDiscrepancyStandalone,
+  type DiscrepancyInput,
+} from './payment-discrepancies'
 import { generateAndStoreTicketsPdf, ticketUrl } from './tickets-pdf'
+import { sendVotePurchaseReceipt } from './vote-emails'
+import {
+  creditVotePurchase,
+  type VoteCreditFailure,
+  type VotePurchaseCredit,
+} from './votes'
 
 // Re-exported so callers get the whole order/fulfillment surface from one
 // module (the PDF helpers live in tickets-pdf for import-cycle reasons).
@@ -44,8 +56,9 @@ export class TicketStockError extends Error {
 }
 
 // A verified charge pays for the order, but fulfillOrder can't deliver what
-// the order is for: a type with no fulfilment yet (vendor_fee,
-// vote_purchase), or a registration fee whose submission can't be found.
+// the order is for: a type with no fulfilment yet (vendor_fee), a
+// registration fee whose submission can't be found, or a vote purchase whose
+// contest can't be found.
 // Thrown out of fulfillOrder's transaction, so nothing is written and the
 // order stays as it was for a person to settle. Every caller already treats
 // a throw that way: the webhook refuses the call, the return page shows the
@@ -54,7 +67,8 @@ export class OrderNotFulfillableError extends Error {
   constructor(
     public readonly orderId: string,
     public readonly orderType: string,
-    public readonly reason: 'unsupported_type' | RegistrationCreditFailure
+    public readonly reason:
+      'unsupported_type' | RegistrationCreditFailure | VoteCreditFailure
   ) {
     super(`Order ${orderId} (${orderType}) cannot be fulfilled: ${reason}`)
     this.name = 'OrderNotFulfillableError'
@@ -220,6 +234,7 @@ type OrderRow = typeof orders.$inferSelect
 export type FulfilmentCredit =
   | { kind: 'tickets' }
   | ({ kind: 'registration' } & RegistrationCredit)
+  | ({ kind: 'votes' } & VotePurchaseCredit)
 
 export type FulfillOrderResult =
   | {
@@ -273,6 +288,34 @@ function assessCharge(
   return { ok: true, overpaidMinor: paid.overpaidMinor }
 }
 
+// The identifying half of a payment_discrepancies row: who paid, against
+// which order, with which Flutterwave charge, and for how much. Each branch
+// below adds only `kind`, `owedMinor`, `reason` and `detail`.
+//
+// Everything here is copied, not referenced. orders.flw_transaction_id in
+// particular is overwritten when an order goes failed → paid, so a rejected
+// charge's id survives only on its own record.
+function discrepancyFacts(
+  order: OrderRow,
+  charge: VerifiedCharge
+): Omit<DiscrepancyInput, 'kind' | 'owedMinor' | 'reason' | 'detail'> {
+  return {
+    orderId: order.id,
+    orderType: order.type,
+    eventId: order.eventId,
+    buyerEmail: order.buyerEmail,
+    buyerName: order.buyerName,
+    flwTxRef: order.flwTxRef,
+    flwTransactionId: String(charge.id),
+    // What checkout asked Flutterwave to charge (whole naira, in kobo) —
+    // the figure the charge was actually assessed against, not totalMinor.
+    expectedMinor: toFlutterwaveAmount(order.totalMinor) * 100,
+    paidMinor: chargeAmountMinor(charge.amount),
+    paidCurrency:
+      typeof charge.currency === 'string' ? charge.currency.toUpperCase() : '',
+  }
+}
+
 // Idempotent: if the order is already paid it's a no-op.
 //
 // Every path that marks an order paid comes through here — the FW webhook,
@@ -286,10 +329,11 @@ function assessCharge(
 // What is delivered depends on the order's type, read from the same locked
 // row, and is decided only after the check (deliverOrder): a 'ticket' order
 // bumps tier.sold and mints its tickets, a 'registration_fee' order completes
-// its submission. 'vendor_fee' and 'vote_purchase' have no fulfilment yet and
-// are refused with OrderNotFulfillableError, never minted as tickets. The
-// check runs for every type because it comes first, and no per-type step is
-// exported or called from anywhere else.
+// its submission, a 'vote_purchase' order grants its buyer vote credits for
+// the contest. 'vendor_fee' has no fulfilment yet and is refused with
+// OrderNotFulfillableError, never minted as tickets. The check runs for every
+// type because it comes first, and no per-type step is exported or called
+// from anywhere else.
 //
 // Returns `justFulfilled: true` only when this call did the pending→paid
 // transition. Side-effect callers (email, PDF) should gate on that flag so
@@ -302,6 +346,49 @@ export async function fulfillOrder({
   orderId: string
   charge: VerifiedCharge
 }): Promise<FulfillOrderResult | null> {
+  // Hand-off from runFulfilment, which fills `order` in once the charge has
+  // been checked and found to pay for this order. Plain JS state, so it
+  // survives the transaction rolling back — and a rollback after that point
+  // is precisely the known hole: the tier sold out between payment and
+  // minting (or the order couldn't be delivered at all), so the buyer is
+  // charged, holds nothing, and the order is left as it was. This catch is
+  // the only place left that can write that down, because everything inside
+  // the transaction is gone.
+  const assessed: { order: OrderRow | null } = { order: null }
+
+  try {
+    return await runFulfilment(orderId, charge, assessed)
+  } catch (err) {
+    const order = assessed.order
+    if (order) {
+      // Own transaction (the fulfilment one is rolled back), idempotent on
+      // (order, charge, kind) — the reconciliation job re-presents this same
+      // charge every 15 minutes for 48 hours and must not pile up records.
+      // Never throws, so the caller still sees the real error below: the
+      // webhook refuses with a 4xx, the return page shows "processing", the
+      // reconciliation job counts an error. Unchanged, all of them.
+      await recordDiscrepancyStandalone({
+        ...discrepancyFacts(order, charge),
+        kind: 'undelivered',
+        owedMinor: chargeAmountMinor(charge.amount),
+        reason:
+          err instanceof OrderNotFulfillableError
+            ? err.reason
+            : 'fulfilment_failed',
+        detail: err instanceof Error ? err.message.slice(0, 500) : '',
+      })
+    }
+    throw err
+  }
+}
+
+// fulfillOrder's transaction. Split out only so fulfillOrder can wrap it: the
+// locking, the charge assessment and the delivery below are unchanged.
+async function runFulfilment(
+  orderId: string,
+  charge: VerifiedCharge,
+  assessed: { order: OrderRow | null }
+): Promise<FulfillOrderResult | null> {
   const flwTransactionId = String(charge.id)
 
   return db.transaction(async (tx): Promise<FulfillOrderResult | null> => {
@@ -335,6 +422,24 @@ export async function fulfillOrder({
           amount: charge.amount,
           currency: charge.currency,
         })
+        // Only when the charge carries this order's own tx_ref: one that
+        // doesn't says nothing about this order's payment, exactly as in
+        // assessCharge. The whole second charge is owed back — the order was
+        // already paid in full by another one.
+        //
+        // This branch is reached on *every* repeat of that charge (webhook
+        // retries, the return page, every reconciliation run), so the row
+        // lock gives no protection here at all; the unique index on
+        // (order, charge, kind) is what makes it one record.
+        if (order.flwTxRef && charge.tx_ref === order.flwTxRef) {
+          await recordDiscrepancy(tx, {
+            ...discrepancyFacts(order, charge),
+            kind: 'duplicate_charge',
+            owedMinor: chargeAmountMinor(charge.amount),
+            reason: 'already_paid',
+            detail: `Order was already paid by transaction ${order.flwTransactionId}.`,
+          })
+        }
       }
       return { outcome: 'already_paid', order, justFulfilled: false }
     }
@@ -407,6 +512,23 @@ export async function fulfillOrder({
         expected: rejection.expected,
         received: rejection.received,
       })
+      // `status = 'failed' AND flw_transaction_id IS NOT NULL` finds these by
+      // query, but only until the buyer pays properly: fulfilling from
+      // 'failed' overwrites flw_transaction_id with the good charge's id and
+      // the rejected one — money we are still holding — disappears from the
+      // row entirely. It also carries no amounts, no detected-at and nowhere
+      // to say the refund was made, so an admin would re-work it forever.
+      // Hence its own record, the same as an overpayment's.
+      if (chargeIsForThisOrder) {
+        await recordDiscrepancy(tx, {
+          ...discrepancyFacts(order, charge),
+          kind: 'rejected_charge',
+          // Nothing was delivered, so the whole charge is owed back.
+          owedMinor: chargeAmountMinor(charge.amount),
+          reason: rejection.reason,
+          detail: '',
+        })
+      }
       return {
         outcome: 'rejected',
         order: current,
@@ -417,6 +539,12 @@ export async function fulfillOrder({
 
     // Only a charge that pays for this order gets here, whatever its type:
     // the type decides what is delivered, never whether the charge is checked.
+    //
+    // Recorded before anything is delivered, because this is the last point
+    // at which we know the money is good: from here on a throw rolls the
+    // whole transaction back, and fulfillOrder's catch reads this to write
+    // the charge down as paid-but-undelivered.
+    assessed.order = order
     const credit = await deliverOrder(tx, order, flwTransactionId)
 
     const paidAt = new Date()
@@ -427,6 +555,9 @@ export async function fulfillOrder({
 
     // Paid from 'failed' after an earlier charge was rejected: that charge's
     // id has just been overwritten above, and it still needs refunding.
+    // That earlier charge already has its own 'rejected_charge' record from
+    // the branch above, written when it was rejected — which is the reason
+    // that record exists, since its id is gone from the row as of this line.
     if (
       order.flwTransactionId !== null &&
       order.flwTransactionId !== flwTransactionId
@@ -446,6 +577,19 @@ export async function fulfillOrder({
         requestedAmount: toFlutterwaveAmount(order.totalMinor),
         paidAmount: charge.amount,
         overpaidMinor: assessment.overpaidMinor,
+      })
+      // Only the excess is owed: the buyer keeps what they bought. Written in
+      // this transaction, so it commits with the fulfilment it describes and
+      // no crash can land one without the other — but inside a SAVEPOINT, so
+      // a failure here rolls back only itself and the buyer is still served
+      // (see recordDiscrepancy). Reached only on the pending→paid transition,
+      // which the row lock lets exactly one caller take.
+      await recordDiscrepancy(tx, {
+        ...discrepancyFacts(order, charge),
+        kind: 'overpayment',
+        owedMinor: assessment.overpaidMinor,
+        reason: 'overpaid',
+        detail: '',
       })
     }
 
@@ -492,11 +636,50 @@ async function deliverOrder(
       return { kind: 'registration', ...result.credit }
     }
 
-    // Not built yet. These must never fall through to minting tickets that
-    // were never bought: refused, and left for a person, until each has its
+    case 'vote_purchase': {
+      // Grants the buyer a vote-credit BALANCE for the contest named in
+      // `referenceId`; `quantity` is the number of votes, snapshotted at
+      // checkout. Safe to reach twice: the pending→paid transition this
+      // transaction performs is the once-only token, and grantVoteCredits
+      // re-checks it under the same row lock (see lib/votes.ts).
+      const result = await creditVotePurchase(tx, order)
+      if (!result.ok) throw refuse(result.reason)
+
+      if (result.credit.unusable) {
+        // The contest stopped accepting votes between the payment link and
+        // this charge clearing. The credits are real and can never be spent,
+        // so the whole charge is owed back. Recorded here, inside the same
+        // transaction as the credit, through recordDiscrepancy's SAVEPOINT —
+        // which never throws, so a failure to book the obligation can never
+        // roll back a payment we have already accepted.
+        await recordDiscrepancy(tx, {
+          kind: 'votes_unusable',
+          orderId: order.id,
+          orderType: 'vote_purchase',
+          eventId: order.eventId,
+          buyerEmail: order.buyerEmail,
+          buyerName: order.buyerName,
+          flwTxRef: order.flwTxRef,
+          flwTransactionId,
+          expectedMinor: order.totalMinor,
+          // The charge cleared its amount check, so it paid at least this.
+          // Any excess above it already has its own 'overpayment' row and is
+          // not owed twice.
+          paidMinor: order.totalMinor,
+          paidCurrency: PAYMENT_CURRENCY,
+          owedMinor: order.totalMinor,
+          reason: 'voting_closed',
+          detail: `${result.credit.votesGranted} vote${result.credit.votesGranted === 1 ? '' : 's'} bought for “${result.credit.contestTitle}”, which had stopped accepting votes by the time the payment cleared. The credits cannot be spent, so the whole charge is owed back.`,
+        })
+      }
+
+      return { kind: 'votes', ...result.credit }
+    }
+
+    // Not built yet. This must never fall through to minting tickets that
+    // were never bought: refused, and left for a person, until it has its
     // own case here.
     case 'vendor_fee':
-    case 'vote_purchase':
       throw refuse('unsupported_type')
 
     default: {
@@ -578,7 +761,8 @@ async function mintTicketsForOrder(
 
 /**
  * The side effects of a fulfilment, for every order type: the ticket PDF and
- * email for a ticket order, the confirmation email for a registration fee.
+ * email for a ticket order, the confirmation email for a registration fee,
+ * nothing (yet) for a vote purchase.
  * The FW webhook, the /checkout/return page and the reconciliation job each
  * call this with fulfillOrder's result. It does nothing unless that call did
  * the pending→paid transition (`justFulfilled`), so when they race, the
@@ -600,6 +784,18 @@ export async function notifyFulfilment(
       if (credit.completed) {
         await sendSubmissionConfirmation(credit.submissionId, { baseUrl })
       }
+      return
+    case 'votes':
+      // The receipt. It also carries the bad news when the contest stopped
+      // accepting votes before the charge cleared: the credits exist, cannot
+      // be spent, and the money is owed back (deliverOrder has already put
+      // that on the Refunds Owed screen).
+      await sendVotePurchaseReceipt(result.order.id, {
+        baseUrl,
+        votesGranted: credit.votesGranted,
+        votesRemaining: credit.purchased - credit.spent,
+        unusable: credit.unusable,
+      })
       return
   }
 }
@@ -667,15 +863,20 @@ export async function notifyOrderFulfilled({
     const name = t.recipientName || head.order.buyerName || 'there'
     const r =
       recipients.get(email) ??
-      ({ name, email, firstCode: t.code, tiers: new Map(), count: 0 } as Recipient)
+      ({
+        name,
+        email,
+        firstCode: t.code,
+        tiers: new Map(),
+        count: 0,
+      } as Recipient)
     const tierName = t.tierName ?? 'General'
     r.tiers.set(tierName, (r.tiers.get(tierName) ?? 0) + 1)
     r.count += 1
     recipients.set(email, r)
   }
 
-  const isGroup =
-    recipients.size > 1 || (head.order.attendees?.length ?? 0) > 0
+  const isGroup = recipients.size > 1 || (head.order.attendees?.length ?? 0) > 0
   const eventDate = formatEventDateRange(
     head.event.eventDate,
     head.event.endDate
