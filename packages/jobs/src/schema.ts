@@ -157,13 +157,39 @@ export const voucherCodeSchema = z.object({
 })
 export type VoucherCodePayload = z.infer<typeof voucherCodeSchema>
 
-export const adminBroadcastSchema = z.object({
-  // One batch of recipients; the API fans a large audience into several sends.
-  emails: z.array(z.email()).min(1).max(100),
-  subject: z.string(),
-  // Markdown authored in the admin composer.
-  body: z.string(),
-})
+export const adminBroadcastSchema = z
+  .object({
+    // One batch of recipients; the API fans a large audience into several
+    // sends. Each carries the name so the message can greet the person
+    // rather than "Dear Attendee" — see NAME_TOKEN in the task.
+    recipients: z
+      .array(z.object({ email: z.email(), name: z.string().default('') }))
+      .min(1)
+      .max(100)
+      .optional(),
+    // The shape before names were carried. Still accepted so a payload
+    // already queued when this shipped, or a worker yet to be redeployed,
+    // behaves exactly as it did.
+    emails: z.array(z.email()).min(1).max(100).optional(),
+    subject: z.string(),
+    // Markdown authored in the admin composer.
+    body: z.string(),
+    // What {{name}} becomes for an account with no name on it. The sender
+    // knows who it is writing to and we do not: "Dear Attendee" for ticket
+    // holders, "there" for a general announcement. Rare either way — accounts
+    // and guest checkouts both capture a name.
+    fallbackName: z.string().min(1).default('there'),
+  })
+  .transform((v) => ({
+    subject: v.subject,
+    body: v.body,
+    fallbackName: v.fallbackName,
+    recipients:
+      v.recipients ?? (v.emails ?? []).map((email) => ({ email, name: '' })),
+  }))
+  .refine((v) => v.recipients.length > 0, {
+    message: 'a broadcast needs at least one recipient',
+  })
 export type AdminBroadcastPayload = z.infer<typeof adminBroadcastSchema>
 
 // Registration form review. An admin approved a form's questions (it now takes

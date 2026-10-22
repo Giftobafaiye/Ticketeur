@@ -2,14 +2,21 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   experimental: {
-    appNewScrollHandler: true,
+    // `appNewScrollHandler: true` used to sit here. It was added in May 2026
+    // to stop a "domNode.focus is not a function" error on the vendor
+    // profile, and the flag no longer exists in Next 16.4.2 — the whole
+    // package has no mention of it, so it is a hard type error rather than a
+    // dead option. Next graduated the rewritten scroll handler, so the
+    // behaviour it opted into is what ships now.
+    //
+    // If that focus error ever comes back on the vendor profile, this is the
+    // history: it is a scroll-and-focus problem in the App Router, not
+    // something the page itself did.
+
     // Tree-shake huge barrel packages so only referenced members are bundled.
     // @hugeicons/* aren't in Next's built-in optimizePackageImports list
     // (date-fns / lucide-react already are), and they're imported app-wide.
-    optimizePackageImports: [
-      '@hugeicons/core-free-icons',
-      '@hugeicons/react',
-    ],
+    optimizePackageImports: ['@hugeicons/core-free-icons', '@hugeicons/react'],
   },
   transpilePackages: ['@ticketur/ui', '@ticketur/observability'],
   compiler: {
