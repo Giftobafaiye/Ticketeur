@@ -9,22 +9,22 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@react-email/render": "^2.1.0",
+    "@react-email/render": "^2.1.1",
     "@ticketur/db": "workspace:*",
     "@ticketur/email": "workspace:*",
     "@ticketur/env": "workspace:*",
-    "@trigger.dev/sdk": "4.7.0",
-    "react": "^19.3.0",
-    "resend": "^6.32.0",
-    "trigger.dev": "^4.7.0",
-    "zod": "^4.6.5"
+    "@trigger.dev/sdk": "4.7.6",
+    "react": "^19.3.1",
+    "resend": "^6.34.1",
+    "trigger.dev": "^4.7.6",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@ticketur/typescript-config": "workspace:*",
-    "@trigger.dev/build": "4.7.0",
-    "@types/node": "^26.6.4",
+    "@trigger.dev/build": "4.7.6",
+    "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
-    "dotenv": "^18.0.5",
+    "dotenv": "^18.0.8",
     "typescript": "^6.0.3"
   },
   "main": "./src/index.ts",
