@@ -33,14 +33,18 @@ const MarkdownEditor = dynamic(
   }
 )
 
-type Mode = 'everyone' | 'role' | 'users'
+type Mode = 'everyone' | 'role' | 'users' | 'event'
 type Role = 'attendee' | 'organizer' | 'vendor'
 type PickedUser = { id: string; name: string; email: string }
+type PickedEvent = { id: string; title: string; buyers: number }
 
 const MODES: { value: Mode; label: string }[] = [
   { value: 'everyone', label: 'Everyone' },
   { value: 'role', label: 'By role' },
   { value: 'users', label: 'Specific users' },
+  // The audience a venue change needs: everyone holding a paid place at one
+  // event, guest buyers included.
+  { value: 'event', label: "One event's attendees" },
 ]
 
 export function EmailComposeContent() {
@@ -50,6 +54,8 @@ export function EmailComposeContent() {
   const [mode, setMode] = useState<Mode>('everyone')
   const [role, setRole] = useState<Role>('attendee')
   const [selected, setSelected] = useState<PickedUser[]>([])
+  const [event, setEvent] = useState<PickedEvent | null>(null)
+  const [eventSearch, setEventSearch] = useState('')
   const [search, setSearch] = useState('')
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
@@ -59,19 +65,34 @@ export function EmailComposeContent() {
       ? ({ type: 'everyone' } as const)
       : mode === 'role'
         ? ({ type: 'role', role } as const)
-        : ({ type: 'users', userIds: selected.map((s) => s.id) } as const)
+        : mode === 'event'
+          ? ({ type: 'event', eventId: event?.id ?? '' } as const)
+          : ({ type: 'users', userIds: selected.map((s) => s.id) } as const)
 
   // Headcount for everyone/role; for a hand-picked set it's just the chips.
   const countQuery = useQuery(
     trpc.admin.emails.recipientCount.queryOptions(
       mode === 'role'
         ? { type: 'role', role }
-        : ({ type: 'everyone' } as const),
-      { enabled: mode !== 'users' }
+        : mode === 'event'
+          ? ({ type: 'event', eventId: event?.id ?? '' } as const)
+          : ({ type: 'everyone' } as const),
+      { enabled: mode !== 'users' && (mode !== 'event' || event !== null) }
     )
   )
   const recipientCount =
-    mode === 'users' ? selected.length : (countQuery.data?.count ?? null)
+    mode === 'users'
+      ? selected.length
+      : mode === 'event' && event === null
+        ? null
+        : (countQuery.data?.count ?? null)
+
+  const eventQuery = useQuery(
+    trpc.admin.emails.searchEvents.queryOptions(
+      { q: eventSearch.trim() },
+      { enabled: mode === 'event' }
+    )
+  )
 
   const searchQuery = useQuery(
     trpc.admin.emails.searchRecipients.queryOptions(
@@ -108,6 +129,8 @@ export function EmailComposeContent() {
   async function onSend() {
     if (!subject.trim()) return toast.error('Add a subject.')
     if (!body.trim()) return toast.error('Write a message.')
+    if (mode === 'event' && !event)
+      return toast.error('Pick the event these people are coming to.')
     if (mode === 'users' && selected.length === 0)
       return toast.error('Pick at least one user.')
     const count = recipientCount ?? 0
@@ -157,9 +180,76 @@ export function EmailComposeContent() {
             onChange={(e) => setRole(e.target.value as Role)}
           >
             <NativeSelectOption value="attendee">Attendees</NativeSelectOption>
-            <NativeSelectOption value="organizer">Organizers</NativeSelectOption>
+            <NativeSelectOption value="organizer">
+              Organizers
+            </NativeSelectOption>
             <NativeSelectOption value="vendor">Vendors</NativeSelectOption>
           </NativeSelect>
+        ) : null}
+
+        {mode === 'event' ? (
+          <div className="flex flex-col gap-3">
+            {event ? (
+              <div className="border-border bg-muted/40 flex items-center justify-between gap-4 rounded-xl border p-4">
+                <div className="flex min-w-0 flex-col">
+                  <span className="text-foreground truncate text-sm font-semibold">
+                    {event.title}
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    {event.buyers}{' '}
+                    {event.buyers === 1 ? 'person has' : 'people have'} paid to
+                    attend
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEvent(null)}
+                >
+                  Change
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Input
+                  placeholder="Search events that have sold…"
+                  value={eventSearch}
+                  onChange={(e) => setEventSearch(e.target.value)}
+                />
+                <ul className="border-border max-h-64 divide-y overflow-auto rounded-xl border">
+                  {(eventQuery.data ?? []).map((e) => (
+                    <li key={e.id}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEvent({
+                            id: e.id,
+                            title: e.title,
+                            buyers: e.buyers,
+                          })
+                        }
+                        className="hover:bg-muted flex w-full flex-col items-start gap-0.5 px-4 py-3 text-left transition-colors"
+                      >
+                        <span className="text-foreground text-sm font-medium">
+                          {e.title}
+                        </span>
+                        <span className="text-muted-foreground text-xs">
+                          {e.eventDate ?? 'Date TBD'} · {e.location} ·{' '}
+                          {e.buyers} paid
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                  {eventQuery.data?.length === 0 ? (
+                    <li className="text-muted-foreground px-4 py-3 text-sm">
+                      No event with paid orders matches that.
+                    </li>
+                  ) : null}
+                </ul>
+              </>
+            )}
+          </div>
         ) : null}
 
         {mode === 'users' ? (
@@ -206,7 +296,9 @@ export function EmailComposeContent() {
             {search.trim().length > 0 ? (
               <div className="border-border/60 max-h-64 overflow-y-auto rounded-lg border">
                 {searchQuery.isLoading ? (
-                  <p className="text-muted-foreground p-4 text-sm">Searching…</p>
+                  <p className="text-muted-foreground p-4 text-sm">
+                    Searching…
+                  </p>
                 ) : (searchQuery.data ?? []).length === 0 ? (
                   <p className="text-muted-foreground p-4 text-sm">
                     No matching users.
