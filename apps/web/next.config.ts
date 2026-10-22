@@ -2,7 +2,6 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   experimental: {
-    appNewScrollHandler: true,
     // Tree-shake huge barrel packages so only referenced members are bundled.
     // @hugeicons/* aren't in Next's built-in optimizePackageImports list
     // (date-fns / lucide-react already are), and they're imported app-wide.
