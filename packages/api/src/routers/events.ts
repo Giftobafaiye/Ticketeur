@@ -627,6 +627,9 @@ export const eventsRouter = createTRPCRouter({
     const rows = await ctx.db
       .select({
         id: events.id,
+        // The organizer's list offers a copy-link action, so it needs the
+        // public slug as well as the internal id.
+        slug: events.slug,
         title: events.title,
         eventDate: events.eventDate,
         endDate: events.endDate,

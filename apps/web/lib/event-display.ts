@@ -31,6 +31,12 @@ export function eventCode(id: string): string {
   return `EVT-${id.replace(/^evt_/, '').slice(0, 8).toUpperCase()}`
 }
 
+// The public page an event is served at. The slug is generated once and never
+// regenerated, so a link already shared keeps working through a rename.
+export function publicEventPath(slug: string): string {
+  return `/events/${slug}`
+}
+
 export function formatNaira(minor: number): string {
   return `₦${(minor / 100).toLocaleString('en-US', {
     maximumFractionDigits: 0,

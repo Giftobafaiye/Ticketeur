@@ -18,6 +18,7 @@ import {
   ViewIcon,
   Edit02Icon,
   Delete02Icon,
+  Copy01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ArrowUp01Icon,
@@ -35,7 +36,11 @@ import {
   STATUS_TONE,
   type EventStatus,
 } from '@/lib/org-events'
-import { initialsFromTitle, formatEventDate } from '@/lib/event-display'
+import {
+  initialsFromTitle,
+  formatEventDate,
+  publicEventPath,
+} from '@/lib/event-display'
 
 const TAB_VALUES = [
   'all',
@@ -369,6 +374,7 @@ function SortableHeader({
 
 type EventRowData = {
   id: string
+  slug: string
   title: string
   eventDate: string | null
   endDate: string | null
@@ -436,6 +442,7 @@ function EventRow({
       <td className="px-5 py-4">
         <RowActions
           status={ev.status}
+          slug={ev.slug}
           detailHref={detailHref}
           onArchive={onArchive}
           onDelete={onDelete}
@@ -447,15 +454,33 @@ function EventRow({
 
 function RowActions({
   status,
+  slug,
   detailHref,
   onArchive,
   onDelete,
 }: {
   status: EventStatus
+  slug: string
   detailHref: string
   onArchive: () => void
   onDelete: () => void
 }) {
+  // Only an event with a public page is worth copying a link to. A draft or
+  // one still in review resolves to nothing, so offering the link there would
+  // hand the organizer an address that 404s for whoever they sent it to.
+  const isPublic = status === 'upcoming' || status === 'archived'
+
+  async function copyLink() {
+    const path = publicEventPath(slug)
+    const url =
+      typeof window === 'undefined' ? path : `${window.location.origin}${path}`
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('Link copied')
+    } catch {
+      toast.error('Could not copy the link', { description: url })
+    }
+  }
   if (status === 'draft') {
     return (
       <div className="flex items-center gap-1">
@@ -484,6 +509,12 @@ function RowActions({
           tone="primary"
         />
         <IconAction
+          label="Copy link"
+          icon={Copy01Icon}
+          tone="primary"
+          onClick={copyLink}
+        />
+        <IconAction
           label="Delete event"
           icon={Delete02Icon}
           tone="danger"
@@ -500,6 +531,14 @@ function RowActions({
         icon={ViewIcon}
         tone="primary"
       />
+      {isPublic ? (
+        <IconAction
+          label="Copy link"
+          icon={Copy01Icon}
+          tone="primary"
+          onClick={copyLink}
+        />
+      ) : null}
       {status === 'upcoming' ? (
         <IconAction
           label="Archive event"
