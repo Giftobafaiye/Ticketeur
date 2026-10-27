@@ -19,7 +19,7 @@
     "@ticketur/db": "workspace:*",
     "@ticketur/env": "workspace:*",
     "@ticketur/jobs": "workspace:*",
-    "@trigger.dev/sdk": "4.7.6",
+    "@trigger.dev/sdk": "4.8.1",
     "better-auth": "^1.7.12",
     "drizzle-orm": "^0.45.4"
   },
@@ -27,8 +27,8 @@
     "@ticketur/typescript-config": "workspace:*",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
-    "next": "16.4.2",
+    "next": "16.4.3",
     "react": "^19.3.1",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   }
 }
