@@ -28,6 +28,7 @@ import {
 } from '@ticketur/ui/components/alert-dialog'
 import { Button } from '@ticketur/ui/components/button'
 
+import { PublicLink as SharedPublicLink } from '@/components/dashboard/public-link'
 import { useTRPC } from '@/lib/trpc'
 import {
   FORM_TYPE_LABEL,
@@ -404,58 +405,14 @@ function PublicLink({
   slug: string
   availability: FormDetail['availability']
 }) {
-  const path = publicFormPath(slug)
-
-  async function copy() {
-    const url =
-      typeof window === 'undefined' ? path : `${window.location.origin}${path}`
-    try {
-      await navigator.clipboard.writeText(url)
-      toast.success('Link copied')
-    } catch {
-      toast.error('Could not copy the link', { description: url })
-    }
-  }
-
   return (
-    <div className="border-border/60 bg-background flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-          Share this link
-        </p>
-        <code className="text-foreground truncate text-sm">{path}</code>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={copy}
-          className="gap-1.5"
-        >
-          <HugeiconsIcon
-            icon={Copy01Icon}
-            className="size-4"
-            strokeWidth={1.8}
-          />
-          Copy
-        </Button>
-        <Button size="sm" variant="outline" asChild className="gap-1.5">
-          <a href={path} target="_blank" rel="noreferrer">
-            <HugeiconsIcon
-              icon={LinkSquare02Icon}
-              className="size-4"
-              strokeWidth={1.8}
-            />
-            Open
-          </a>
-        </Button>
-      </div>
-      {availability && !availability.open ? (
-        <p className="text-muted-foreground w-full text-xs">
-          Anyone opening it right now is told it is not taking applications.
-        </p>
-      ) : null}
-    </div>
+    <SharedPublicLink
+      path={publicFormPath(slug)}
+      note={
+        availability && !availability.open
+          ? 'Anyone opening it right now is told it is not taking applications.'
+          : undefined
+      }
+    />
   )
 }

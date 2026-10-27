@@ -27,6 +27,7 @@ import {
 } from '@ticketur/ui/components/alert-dialog'
 import { Button } from '@ticketur/ui/components/button'
 
+import { PublicLink as SharedPublicLink } from '@/components/dashboard/public-link'
 import { useTRPC } from '@/lib/trpc'
 import {
   formatPerVote,
@@ -416,67 +417,29 @@ function PublicLink({
   slug: string
   availability: ContestDetail['availability']
 }) {
-  const path = publicContestPath(slug)
-
-  async function copy() {
-    const url =
-      typeof window === 'undefined' ? path : `${window.location.origin}${path}`
-    try {
-      await navigator.clipboard.writeText(url)
-      toast.success('Link copied')
-    } catch {
-      toast.error('Could not copy the link', { description: url })
-    }
-  }
-
   return (
-    <div className="border-border/60 bg-background flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase">
-          <HugeiconsIcon
-            icon={ChampionIcon}
-            className="size-3.5"
-            strokeWidth={1.8}
-          />
-          Share this link
-        </p>
-        <code className="text-foreground truncate text-sm">{path}</code>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={copy}
-          className="gap-1.5"
-        >
-          <HugeiconsIcon
-            icon={Copy01Icon}
-            className="size-4"
-            strokeWidth={1.8}
-          />
-          Copy
-        </Button>
-        <Button size="sm" variant="outline" asChild className="gap-1.5">
-          <a href={path} target="_blank" rel="noreferrer">
-            <HugeiconsIcon
-              icon={LinkSquare02Icon}
-              className="size-4"
-              strokeWidth={1.8}
-            />
-            Open
-          </a>
-        </Button>
-      </div>
-      {availability && !availability.open ? (
-        <p className="text-muted-foreground w-full text-xs">
-          Anyone opening it right now is told voting is not open.
-        </p>
-      ) : null}
-      <p className="text-muted-foreground w-full text-xs">
-        This link was fixed when you created the contest and never changes, so
-        renaming is safe.
-      </p>
-    </div>
+    <SharedPublicLink
+      path={publicContestPath(slug)}
+      labelIcon={
+        <HugeiconsIcon
+          icon={ChampionIcon}
+          className="size-3.5"
+          strokeWidth={2}
+        />
+      }
+      note={
+        <>
+          {availability && !availability.open ? (
+            <p className="m-0">
+              Anyone opening it right now is told voting is not open.
+            </p>
+          ) : null}
+          <p className="m-0">
+            This link was fixed when you created the contest and never changes,
+            so renaming is safe.
+          </p>
+        </>
+      }
+    />
   )
 }

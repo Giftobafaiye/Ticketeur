@@ -46,7 +46,9 @@ import {
   formatEventDate,
   formatNaira,
   formatWeekday,
+  publicEventPath,
 } from '@/lib/event-display'
+import { PublicLink } from '@/components/dashboard/public-link'
 
 const FEATURE_ICONS: Record<string, IconSvgElement> = {
   'Live DJ Sets': MusicNote03Icon,
@@ -193,6 +195,18 @@ export function EventDetail({ id }: { id: string }) {
           </Link>
         </Button>
       </header>
+
+      {status === 'upcoming' || status === 'archived' ? (
+        <PublicLink
+          path={publicEventPath(event.slug)}
+          label="Share this event"
+          note={
+            status === 'archived'
+              ? 'This event is archived, so its page is a record of what happened rather than a place to buy tickets.'
+              : undefined
+          }
+        />
+      ) : null}
 
       {event.pendingChanges ? (
         <div className="border-primary/25 bg-primary/5 text-foreground/90 shrink-0 rounded-xl border px-4 py-3 text-sm">
