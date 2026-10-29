@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { LoginForm } from '@/components/auth/login-form'
 import { SIGNUP_ROLES } from '@/lib/signup-roles'
+import { enabledSocialProviders } from '@ticketur/auth'
+
 import { getSession } from '@/lib/auth'
 import { getPostLoginPath, withNext } from '@/lib/post-login-redirect'
 
@@ -56,7 +58,10 @@ export default async function LoginPage(props: PageProps<'/login'>) {
         </p>
       </header>
 
-      <LoginForm next={typeof next === 'string' ? next : null} />
+      <LoginForm
+        next={typeof next === 'string' ? next : null}
+        socialProviders={enabledSocialProviders()}
+      />
 
       <p className="text-muted-foreground mt-2 text-center text-sm md:hidden">
         Don&apos;t have an account?{' '}

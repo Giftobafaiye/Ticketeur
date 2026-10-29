@@ -9,7 +9,7 @@ import { ArrowRight01Icon } from '@hugeicons/core-free-icons'
 import { VendorMarketplaceCard } from '@/components/cards/vendor-marketplace-card'
 import { useTRPC } from '@/lib/trpc'
 
-const VENDOR_PLACEHOLDER = '/vendor-placeholder.png'
+const VENDOR_PLACEHOLDER = '/vendor-placeholder.svg'
 
 export function FeaturedVendors() {
   const trpc = useTRPC()

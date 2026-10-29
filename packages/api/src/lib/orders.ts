@@ -40,6 +40,7 @@ import {
   type VoteCreditFailure,
   type VotePurchaseCredit,
 } from './votes'
+import { releaseVoucherClaim } from './vouchers'
 
 // Re-exported so callers get the whole order/fulfillment surface from one
 // module (the PDF helpers live in tickets-pdf for import-cycle reasons).
@@ -486,6 +487,7 @@ async function runFulfilment(
           .set({ status: 'failed', flwTransactionId })
           .where(eq(orders.id, order.id))
         current = { ...order, status: 'failed', flwTransactionId }
+        await releaseVoucherClaim(tx, order.id)
       }
       // A registration fee this charge didn't cover: the submission's spot is
       // released in the same transaction that fails the order. Idempotent, so
@@ -747,15 +749,20 @@ async function mintTicketsForOrder(
     throw err
   }
 
-  // Count the voucher redemption now that payment succeeded. Unconditional:
-  // the cap is enforced at checkout (validateVoucher), and the buyer has
-  // already paid the discounted amount, so we honour it even in the rare
-  // race where the voucher maxed out between checkout and payment.
-  if (order.voucherId) {
+  // An order that claimed its voucher use at checkout has already been
+  // counted. One that holds no claim (created before claims existed, or its
+  // claim was released while it sat unpaid) is counted now, unconditionally:
+  // the buyer has paid the discounted price, so the discount is honoured even
+  // if the voucher maxed out meanwhile. See lib/vouchers.ts.
+  if (order.voucherId && !order.voucherCounted) {
     await tx
       .update(vouchers)
       .set({ redeemedCount: sql`${vouchers.redeemedCount} + 1` })
       .where(eq(vouchers.id, order.voucherId))
+    await tx
+      .update(orders)
+      .set({ voucherCounted: true })
+      .where(eq(orders.id, order.id))
   }
 }
 

@@ -8,7 +8,11 @@ import { ArrowRight01Icon } from '@hugeicons/core-free-icons'
 
 import { EventCard } from '@/components/cards/event-card'
 import { useTRPC } from '@/lib/trpc'
-import { formatNaira } from '@/lib/event-display'
+import {
+  EVENT_CARD_STATUS_LABEL,
+  eventCardStatus,
+  formatNaira,
+} from '@/lib/event-display'
 
 const EVENT_PLACEHOLDER = '/hero-bg.png'
 
@@ -82,7 +86,8 @@ export function DiscoverEvents() {
                 <EventCard
                   id={event.id}
                   title={event.title}
-                  category=""
+                  category={event.category ?? ''}
+                  overlayBadge={EVENT_CARD_STATUS_LABEL[eventCardStatus(event)]}
                   price={
                     event.minPrice > 0
                       ? `From ${formatNaira(event.minPrice)}`

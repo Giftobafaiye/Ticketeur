@@ -30,6 +30,7 @@ function buildPayload(
     endDate: values.endDate,
     time: values.time,
     location: values.location,
+    category: values.category,
     bannerUrl: banner,
     features: values.features,
     tiers: values.tiers.map((t) => ({

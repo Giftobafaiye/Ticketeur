@@ -28,43 +28,45 @@ export function DetailsTab({ event }: { event: EventDetailData }) {
         )}
       </section>
 
-      <section
-        aria-labelledby="features-heading"
-        className="flex flex-col gap-4"
-      >
-        <h2
-          id="features-heading"
-          className="font-heading text-foreground text-2xl font-semibold"
+      {event.features.length > 0 ? (
+        <section
+          aria-labelledby="features-heading"
+          className="flex flex-col gap-4"
         >
-          Features
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:flex md:flex-wrap md:gap-6">
-          {event.features.map((feature, i) => (
-            <motion.div
-              key={feature.label}
-              initial={{ opacity: 0, y: 14 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{
-                delay: i * 0.05,
-                duration: 0.35,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              whileHover={{ y: -3, scale: 1.02 }}
-              className="dark:border-primary/30 dark:bg-primary/10 flex flex-col items-center justify-center gap-4 rounded-xl border border-[#d4c0ff] bg-[#f1ebff] px-6 py-6 md:min-w-[155px]"
-            >
-              <HugeiconsIcon
-                icon={feature.icon}
-                className="text-primary size-[30px]"
-                strokeWidth={1.8}
-              />
-              <span className="dark:text-foreground text-center text-sm font-semibold text-[#282828] md:text-base">
-                {feature.label}
-              </span>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+          <h2
+            id="features-heading"
+            className="font-heading text-foreground text-2xl font-semibold"
+          >
+            Features
+          </h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:flex md:flex-wrap md:gap-6">
+            {event.features.map((feature, i) => (
+              <motion.div
+                key={feature.label}
+                initial={{ opacity: 0, y: 14 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{
+                  delay: i * 0.05,
+                  duration: 0.35,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                whileHover={{ y: -3, scale: 1.02 }}
+                className="dark:border-primary/30 dark:bg-primary/10 flex flex-col items-center justify-center gap-4 rounded-xl border border-[#d4c0ff] bg-[#f1ebff] px-6 py-6 md:min-w-[155px]"
+              >
+                <HugeiconsIcon
+                  icon={feature.icon}
+                  className="text-primary size-[30px]"
+                  strokeWidth={1.8}
+                />
+                <span className="dark:text-foreground text-center text-sm font-semibold text-[#282828] md:text-base">
+                  {feature.label}
+                </span>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   )
 }

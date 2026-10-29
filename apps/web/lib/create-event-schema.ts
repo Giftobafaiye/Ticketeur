@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { EVENT_CATEGORIES } from '@ticketur/api/lib/event-categories'
+
 export const FEATURE_OPTIONS = [
   'Live DJ Sets',
   'Laser Show',
@@ -48,6 +50,13 @@ export const createEventSchema = z
     endDate: z.string().nullable(),
     time: z.string().min(1, 'Time required'),
     location: z.string().trim().min(1, 'Location required'),
+    // Nullable so the form can start empty (and so an event from before
+    // categories existed loads), but it has to be picked before saving: it is
+    // what buyers filter the marketplace by.
+    category: z
+      .enum(EVENT_CATEGORIES)
+      .nullable()
+      .refine((v) => Boolean(v), 'Pick a category'),
     features: z.array(z.string().trim()),
     tiers: z.array(ticketTierSchema).min(1, 'At least one ticket tier'),
     assignedVendorIds: z.array(z.string()),
@@ -69,6 +78,7 @@ export const CREATE_EVENT_DEFAULTS: CreateEventValues = {
   endDate: null,
   time: '',
   location: '',
+  category: null,
   features: [],
   tiers: [{ name: 'Early Bird', quantity: 100, price: 5000 }],
   assignedVendorIds: [],

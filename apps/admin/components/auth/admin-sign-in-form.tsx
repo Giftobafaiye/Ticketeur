@@ -56,18 +56,24 @@ export function AdminSignInForm() {
         return
       }
 
+      // Every admin has two-factor sign-in on, so a password alone never ends
+      // in a console session: reaching here means either not an admin, or an
+      // admin whose 2FA was switched off behind the auth layer's back. The
+      // console refuses both.
       const role = (result as { user?: { role?: string | null } } | null)?.user
         ?.role
-      if (role !== 'admin') {
-        await authClient.signOut()
-        toast.error('Not an admin account', {
-          description: 'This dashboard is for platform administrators only.',
-        })
-        return
-      }
-
-      toast.success('Welcome back')
-      router.push('/')
+      await authClient.signOut()
+      toast.error(
+        role === 'admin'
+          ? 'Two-factor sign-in required'
+          : 'Not an admin account',
+        {
+          description:
+            role === 'admin'
+              ? 'Re-run the admin seed script for your account, or contact support.'
+              : 'This dashboard is for platform administrators only.',
+        }
+      )
     })
   }
 

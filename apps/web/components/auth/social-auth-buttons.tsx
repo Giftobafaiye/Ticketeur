@@ -2,21 +2,18 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { HugeiconsIcon } from '@hugeicons/react'
-import { InstagramIcon } from '@hugeicons/core-free-icons'
 import { toast } from 'sonner'
+
+import type { SocialProviderId } from '@ticketur/auth'
 
 import { cn } from '@ticketur/ui/lib/utils'
 import { authClient } from '@/lib/auth-client'
 import { withNext } from '@/lib/post-login-redirect'
 
 type SocialProvider = {
+  id: SocialProviderId
   label: string
   icon: React.ReactNode
-  onClick?: () => void
-  // Providers without real credentials stay unclickable rather than failing
-  // mid-redirect.
-  disabled?: boolean
 }
 
 function GoogleGlyph({ className }: { className?: string }) {
@@ -53,13 +50,45 @@ function AppleGlyph({ className }: { className?: string }) {
   )
 }
 
-function notYetWired() {
-  toast('Coming soon', {
-    description: 'This provider is not wired up yet.',
-  })
+function FacebookGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={cn('size-5', className)} aria-hidden>
+      <path
+        fill="#1877F2"
+        d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7.1V12h3V9.4c0-3 1.8-4.7 4.5-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9V12h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12Z"
+      />
+    </svg>
+  )
 }
 
-export function SocialAuthButtons({ next }: { next?: string | null }) {
+const PROVIDERS: SocialProvider[] = [
+  { id: 'google', label: 'Continue with Google', icon: <GoogleGlyph /> },
+  {
+    id: 'apple',
+    label: 'Continue with Apple',
+    icon: <AppleGlyph className="text-foreground" />,
+  },
+  // Instagram has no sign-in for websites (Meta retired it in Dec 2024);
+  // Facebook Login is the Meta account Instagram users already have.
+  { id: 'facebook', label: 'Continue with Facebook', icon: <FacebookGlyph /> },
+]
+
+const PROVIDER_NAME: Record<SocialProviderId, string> = {
+  google: 'Google',
+  apple: 'Apple',
+  facebook: 'Facebook',
+}
+
+// Draws a button for each provider the server has credentials for — never a
+// dead one. They used to include Instagram and Apple buttons that were always
+// disabled. Renders nothing when no provider is configured.
+export function SocialAuthButtons({
+  next,
+  providers,
+}: {
+  next?: string | null
+  providers: SocialProviderId[]
+}) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
 
@@ -68,13 +97,13 @@ export function SocialAuthButtons({ next }: { next?: string | null }) {
   const postLogin = withNext('/post-login', next)
   const welcome = withNext('/welcome', next)
 
-  async function continueWithGoogle() {
+  async function continueWith(provider: SocialProviderId) {
     setPending(true)
     // Popup sign-in: the OAuth round trip happens in a popup on our own
     // origin, so the session cookie it sets is the one this page reads. The
     // opener is never navigated by better-auth, so we route it ourselves.
     const { error } = await authClient.signIn.popup({
-      provider: 'google',
+      provider,
       callbackURL: postLogin,
       newUserCallbackURL: welcome,
     })
@@ -96,54 +125,30 @@ export function SocialAuthButtons({ next }: { next?: string | null }) {
       // the user — fall back to the full-page redirect flow, where better-auth
       // handles the new-user destination itself.
       await authClient.signIn.social({
-        provider: 'google',
+        provider,
         callbackURL: postLogin,
         newUserCallbackURL: welcome,
       })
       return
     }
 
-    toast.error('Google sign-in failed', {
+    toast.error(`${PROVIDER_NAME[provider]} sign-in failed`, {
       description: error.message ?? 'Please try again.',
     })
   }
 
-  const providers: SocialProvider[] = [
-    {
-      label: 'Continue with Google',
-      icon: <GoogleGlyph />,
-      onClick: () => void continueWithGoogle(),
-      disabled: pending,
-    },
-    {
-      label: 'Continue with Instagram',
-      icon: (
-        <HugeiconsIcon
-          icon={InstagramIcon}
-          className="size-5 text-[#d62976]"
-          strokeWidth={1.8}
-        />
-      ),
-      onClick: notYetWired,
-      disabled: true,
-    },
-    {
-      label: 'Continue with Apple',
-      icon: <AppleGlyph className="text-foreground" />,
-      onClick: notYetWired,
-      disabled: true,
-    },
-  ]
+  const shown = PROVIDERS.filter((p) => providers.includes(p.id))
+  if (shown.length === 0) return null
 
   return (
     <div className="flex items-center justify-center gap-4">
-      {providers.map((p) => (
+      {shown.map((p) => (
         <button
-          key={p.label}
+          key={p.id}
           type="button"
-          onClick={p.onClick}
+          onClick={() => void continueWith(p.id)}
           aria-label={p.label}
-          disabled={p.disabled}
+          disabled={pending}
           className="border-border/70 bg-background hover:border-primary/60 hover:bg-muted/40 flex size-11 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         >
           {p.icon}

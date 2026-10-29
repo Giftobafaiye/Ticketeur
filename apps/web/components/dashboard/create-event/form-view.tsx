@@ -48,6 +48,8 @@ import {
 
 import { useQuery } from '@tanstack/react-query'
 
+import { EVENT_CATEGORIES } from '@ticketur/api/lib/event-categories'
+
 import { useTRPC } from '@/lib/trpc'
 import { uploadFile } from '@/lib/upload'
 import {
@@ -174,6 +176,38 @@ export function FormView({
                 ariaInvalid={fieldState.invalid}
                 ariaLabel="Event description"
               />
+              <FieldError errors={[fieldState.error]} />
+            </Field>
+          )}
+        />
+
+        <Controller
+          name="category"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid || undefined}>
+              <FieldLabel htmlFor="category" className="text-sm font-semibold">
+                Category
+              </FieldLabel>
+              <Select
+                value={field.value ?? ''}
+                onValueChange={(v) => field.onChange(v || null)}
+              >
+                <SelectTrigger
+                  id="category"
+                  className="w-full"
+                  aria-invalid={fieldState.invalid}
+                >
+                  <SelectValue placeholder="What kind of event is it?" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EVENT_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FieldError errors={[fieldState.error]} />
             </Field>
           )}

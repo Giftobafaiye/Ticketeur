@@ -20,6 +20,20 @@ import {
 } from './permissions'
 import { userAdditionalFields } from './fields'
 
+export type SocialProviderId = 'google' | 'apple' | 'facebook'
+
+/** The social sign-in providers whose credentials are configured. */
+export function enabledSocialProviders(): SocialProviderId[] {
+  const configured: [SocialProviderId, string, string][] = [
+    ['google', env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET],
+    ['apple', env.APPLE_CLIENT_ID, env.APPLE_CLIENT_SECRET],
+    ['facebook', env.FACEBOOK_CLIENT_ID, env.FACEBOOK_CLIENT_SECRET],
+  ]
+  return configured
+    .filter(([, id, secret]) => Boolean(id && secret))
+    .map(([provider]) => provider)
+}
+
 export function createAuth(cookiePrefix: string) {
   return betterAuth({
     appName: 'Ticketur',
@@ -46,11 +60,24 @@ export function createAuth(cookiePrefix: string) {
       },
     },
 
+    // A provider is on exactly when its credentials are set; the sign-in
+    // pages ask enabledSocialProviders() which buttons to draw, so a button
+    // never leads to a provider that isn't configured.
     socialProviders: {
       google: {
         clientId: env.GOOGLE_CLIENT_ID,
         clientSecret: env.GOOGLE_CLIENT_SECRET,
-        enabled: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+        enabled: enabledSocialProviders().includes('google'),
+      },
+      apple: {
+        clientId: env.APPLE_CLIENT_ID,
+        clientSecret: env.APPLE_CLIENT_SECRET,
+        enabled: enabledSocialProviders().includes('apple'),
+      },
+      facebook: {
+        clientId: env.FACEBOOK_CLIENT_ID,
+        clientSecret: env.FACEBOOK_CLIENT_SECRET,
+        enabled: enabledSocialProviders().includes('facebook'),
       },
     },
 
@@ -106,7 +133,20 @@ export function createAuth(cookiePrefix: string) {
               .requestedRole
             const candidate = typeof requested === 'string' ? requested : ''
             const role = allowed.includes(candidate) ? candidate : 'attendee'
-            return { data: { ...user, role, vendorApprovalStatus: null } }
+            // Consent is only ever what the person ticked, and it is stamped
+            // with when they gave it.
+            const marketingOptIn =
+              (user as unknown as Record<string, unknown>).marketingOptIn ===
+              true
+            return {
+              data: {
+                ...user,
+                role,
+                vendorApprovalStatus: null,
+                marketingOptIn,
+                marketingConsentAt: marketingOptIn ? new Date() : null,
+              },
+            }
           },
           after: async (user) => {
             // Fire-and-forget: a failed welcome email must not fail signup,
@@ -119,6 +159,21 @@ export function createAuth(cookiePrefix: string) {
             })
           },
         },
+        update: {
+          // Two-factor sign-in is not optional for admins. Granting the role
+          // turns it on, and an admin cannot switch it off for themselves.
+          // The admin app's proxy refuses an admin session without it, so a
+          // write that bypasses this hook (a direct DB update) locks the
+          // account out of the console rather than letting it in unguarded.
+          before: async (data, ctx) => {
+            const adminDisablingOwn2fa =
+              ctx?.path === '/two-factor/disable' &&
+              ctx.context.session?.user.role === 'admin'
+            if (data.role === 'admin' || adminDisablingOwn2fa) {
+              return { data: { ...data, twoFactorEnabled: true } }
+            }
+          },
+        },
       },
     },
 
@@ -127,9 +182,14 @@ export function createAuth(cookiePrefix: string) {
     },
     // env.BETTER_AUTH_URL is optional in @ticketur/env/core (the Trigger.dev
     // worker loads that module without it), so drop it when it is unset.
-    trustedOrigins: [...(env.APP_URLS ?? []), env.BETTER_AUTH_URL].filter(
-      (origin): origin is string => origin !== undefined
-    ),
+    trustedOrigins: [
+      ...(env.APP_URLS ?? []),
+      env.BETTER_AUTH_URL,
+      // Apple returns to the callback with a form POST from its own origin.
+      enabledSocialProviders().includes('apple')
+        ? 'https://appleid.apple.com'
+        : undefined,
+    ].filter((origin): origin is string => origin !== undefined),
   })
 }
 

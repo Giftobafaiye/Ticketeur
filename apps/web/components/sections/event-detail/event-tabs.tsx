@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { AnimatePresence, motion } from 'motion/react'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 
@@ -18,6 +17,25 @@ import type { EventDetailData } from '@/components/sections/event-detail/types'
 const TABS = ['details', 'tickets', 'vendors'] as const
 type TabKey = (typeof TABS)[number]
 
+const TABS_SECTION_ID = 'event-tabs'
+
+function useEventTab() {
+  return useQueryState('tab', parseAsStringLiteral(TABS).withDefault('details'))
+}
+
+// What every "Buy Ticket" on the event page does: open the Tickets tab and
+// bring it into view. They used to be links to ?tab=tickets, which switched
+// the tab out of sight below the hero and so looked like nothing happened.
+export function useOpenTickets() {
+  const [, setTab] = useEventTab()
+  return () => {
+    void setTab('tickets')
+    document
+      .getElementById(TABS_SECTION_ID)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
 const TAB_LABELS: Record<TabKey, string> = {
   details: 'Details',
   tickets: 'Tickets',
@@ -31,13 +49,15 @@ export function EventTabs({
   event: EventDetailData
   vendors: EventVendor[]
 }) {
-  const [tab, setTab] = useQueryState(
-    'tab',
-    parseAsStringLiteral(TABS).withDefault('details')
-  )
+  const [tab, setTab] = useEventTab()
+  const openTickets = useOpenTickets()
 
   return (
-    <section aria-label="Event details" className="w-full px-5 md:px-10">
+    <section
+      id={TABS_SECTION_ID}
+      aria-label="Event details"
+      className="w-full scroll-mt-20 px-5 md:px-10"
+    >
       <div className="mx-auto max-w-[1440px] pt-10 pb-6 md:pt-16 md:pb-10">
         <div role="tablist" className="border-b border-[#c6c6c6]">
           <div className="flex items-center gap-6 md:gap-8">
@@ -86,10 +106,10 @@ export function EventTabs({
         >
           <Button
             size="default"
-            asChild
             className="shadow-primary/30 shadow-lg"
+            onClick={openTickets}
           >
-            <Link href={event.buyHref ?? '#'}>Buy Ticket</Link>
+            {event.soldOut ? 'View tickets' : 'Buy Ticket'}
           </Button>
         </motion.div>
 

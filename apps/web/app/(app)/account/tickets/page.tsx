@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default async function MyTicketsPage() {
   const session = await getSession()
   if (!session) {
-    redirect('/login?redirect=/account/tickets')
+    redirect('/login?next=/account/tickets')
   }
   const { trpc, queryClient } = await getServerTRPC()
   await queryClient.prefetchQuery(trpc.account.tickets.list.queryOptions())

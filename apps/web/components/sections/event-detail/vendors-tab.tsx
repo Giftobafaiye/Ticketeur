@@ -17,7 +17,7 @@ export type EventVendor = {
   image: string | null
 }
 
-const VENDOR_PLACEHOLDER = '/vendor-placeholder.png'
+const VENDOR_PLACEHOLDER = '/vendor-placeholder.svg'
 
 export function VendorsTab({ vendors }: { vendors: EventVendor[] }) {
   if (vendors.length === 0) {

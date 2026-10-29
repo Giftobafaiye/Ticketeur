@@ -30,6 +30,8 @@ export type EventPendingChanges = {
   endDate?: string | null
   time: string
   location: string
+  // Absent on edits queued before events had a category: leave it as it is.
+  category?: string | null
   bannerUrl?: string | null
   features: string[]
   tiers: { id?: string; name: string; quantity: number; priceMinor: number }[]
@@ -56,6 +58,9 @@ export const events = pgTable(
     endDate: text('end_date'),
     eventTime: text('event_time').notNull(),
     location: text('location').notNull(),
+    // One of EVENT_CATEGORIES (packages/api/src/lib/event-categories.ts).
+    // Null for events created before categories existed.
+    category: text('category'),
     bannerUrl: text('banner_url'),
     features: jsonb('features').$type<string[]>().notNull().default([]),
     status: text('status').$type<EventStatus>().notNull().default('draft'),
@@ -176,6 +181,9 @@ export const externalVendorInvites = pgTable(
       .$type<ExternalVendorInviteStatus>()
       .notNull()
       .default('invited'),
+    // When the invite email went out (and the vendor was linked). Null until
+    // an admin approves the event; see deliverExternalVendorInvites.
+    sentAt: timestamp('sent_at'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (t) => [index('external_vendor_invites_event_idx').on(t.eventId)]
@@ -251,6 +259,10 @@ export const orders = pgTable(
     // FK here would form an import cycle — same pattern as reports.subjectId).
     // The applied amount is captured in discountMinor regardless.
     voucherId: text('voucher_id'),
+    // True while this order holds one of the voucher's uses (claimed at
+    // checkout, given back if the order goes unpaid). See the redemption
+    // accounting notes in packages/api/src/lib/vouchers.ts.
+    voucherCounted: boolean('voucher_counted').notNull().default(false),
     // Group ("For Multiple") orders: the per-attendee recipients captured at
     // checkout. NULL for a "For Myself" order. Needed because paid orders mint
     // their tickets later (at webhook fulfillment), so the attendee list has to

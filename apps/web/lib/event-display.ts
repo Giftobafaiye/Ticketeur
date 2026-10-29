@@ -42,3 +42,37 @@ export function formatNaira(minor: number): string {
     maximumFractionDigits: 0,
   })}`
 }
+
+// True while today falls within an event's dates (a single-day event: its
+// date). Compared as local YYYY-MM-DD strings, the format events are stored in.
+export function isHappeningToday(
+  start: string | null | undefined,
+  end?: string | null
+): boolean {
+  if (!start) return false
+  const today = format(new Date(), 'yyyy-MM-dd')
+  return start <= today && (end ?? start) >= today
+}
+
+// The status a buyer sees on an event card, most urgent first: finished, sold
+// out, on right now, or still to come.
+export type EventCardStatus = 'past' | 'sold-out' | 'live' | 'upcoming'
+
+export function eventCardStatus(ev: {
+  eventDate: string | null
+  endDate: string | null
+  soldOut?: boolean
+  ended?: boolean
+}): EventCardStatus {
+  if (ev.ended) return 'past'
+  if (ev.soldOut) return 'sold-out'
+  if (isHappeningToday(ev.eventDate, ev.endDate)) return 'live'
+  return 'upcoming'
+}
+
+export const EVENT_CARD_STATUS_LABEL: Record<EventCardStatus, string> = {
+  past: 'Ended',
+  'sold-out': 'Sold out',
+  live: 'Happening now',
+  upcoming: 'Upcoming',
+}

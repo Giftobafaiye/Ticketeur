@@ -36,6 +36,8 @@ import {
 import { authClient } from '@/lib/auth-client'
 import { withNext } from '@/lib/post-login-redirect'
 import { PasswordStrength } from '@/components/auth/password-strength'
+import type { SocialProviderId } from '@ticketur/auth'
+
 import { SocialAuthButtons } from '@/components/auth/social-auth-buttons'
 
 type SignupFormValues = {
@@ -56,10 +58,12 @@ export function SignupForm({
   initialEmail = '',
   lockEmail = false,
   next = null,
+  socialProviders,
 }: {
   config: SignupRoleConfig
   initialEmail?: string
   lockEmail?: boolean
+  socialProviders: SocialProviderId[]
   // Where to return to once the account exists and its email is verified.
   next?: string | null
 }) {
@@ -67,6 +71,9 @@ export function SignupForm({
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isPending, startTransition] = useTransition()
+  // Marketing consent: optional and unticked by default — it has to be an
+  // active choice, separate from agreeing to the terms.
+  const [marketingOptIn, setMarketingOptIn] = useState(false)
 
   const schema = SIGNUP_SCHEMAS[config.role]
   const defaults = getSignupDefaultValues(config) as SignupFormValues
@@ -101,6 +108,7 @@ export function SignupForm({
         email: data.email ?? '',
         password: data.password,
         requestedRole: config.role,
+        marketingOptIn,
         ...additionalFields,
       })
 
@@ -320,7 +328,8 @@ export function SignupForm({
                 <span className="block">
                   I agree to the{' '}
                   <Link
-                    href="/terms"
+                    href="/terms/full"
+                    target="_blank"
                     className="text-primary font-medium hover:underline"
                   >
                     Terms of Service
@@ -341,13 +350,32 @@ export function SignupForm({
         )}
       />
 
+      <Field orientation="horizontal" className="-mt-2 items-start gap-3">
+        <Checkbox
+          id="marketingOptIn"
+          checked={marketingOptIn}
+          onCheckedChange={(v) => setMarketingOptIn(v === true)}
+          className="mt-0.5"
+        />
+        <FieldLabel
+          htmlFor="marketingOptIn"
+          className="text-muted-foreground text-sm leading-5 font-normal"
+        >
+          Send me news about events, offers and the Ticketeur newsletter. You
+          can change this any time in your account settings.
+        </FieldLabel>
+      </Field>
+
       <Button type="submit" size="xl" className="w-full" disabled={isPending}>
         {isPending ? 'Creating account…' : 'Sign Up'}
       </Button>
 
-      <FieldSeparator>or</FieldSeparator>
-
-      <SocialAuthButtons next={next} />
+      {socialProviders.length > 0 ? (
+        <>
+          <FieldSeparator>or</FieldSeparator>
+          <SocialAuthButtons next={next} providers={socialProviders} />
+        </>
+      ) : null}
     </form>
   )
 }

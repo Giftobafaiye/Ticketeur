@@ -29,6 +29,7 @@ import {
 } from './flutterwave'
 import { releaseUnpaidSubmission } from './form-payments'
 import { fulfillOrder, notifyFulfilment } from './orders'
+import { releaseAbandonedVoucherClaims, releaseVoucherClaim } from './vouchers'
 
 // At most this many orders per run, newest first.
 const BATCH_SIZE = 50
@@ -62,6 +63,8 @@ export type ReconcileSummary = {
   // Registration fees still unpaid past the window (after one last look at
   // Flutterwave): their submissions' spots were released.
   expired: number
+  // Checkouts unpaid past the voucher hold: their voucher uses given back.
+  voucherClaimsReleased: number
 }
 
 type Outcome =
@@ -235,12 +238,9 @@ async function reconcileOrder(
         .set({ status: 'failed' })
         .where(and(eq(orders.id, order.id), eq(orders.status, 'pending')))
         .returning({ id: orders.id, type: orders.type })
+      if (row) await releaseVoucherClaim(tx, row.id)
       if (row?.type === 'registration_fee') {
-        await releaseUnpaidSubmission(
-          tx,
-          { orderId: row.id },
-          'payment_failed'
-        )
+        await releaseUnpaidSubmission(tx, { orderId: row.id }, 'payment_failed')
       }
       return row !== undefined
     })
@@ -407,6 +407,7 @@ export async function reconcilePendingOrders({
     errors: 0,
     deferred: 0,
     expired: 0,
+    voucherClaimsReleased: 0,
   }
 
   for (const [index, row] of rows.entries()) {
@@ -427,6 +428,17 @@ export async function reconcilePendingOrders({
 
   if (Date.now() < deadline) {
     await expireUnpaidRegistrations(baseUrl, deadline, summary)
+  }
+
+  // Cheap (one query, no gateway calls), so it runs even when the budget is
+  // spent; a failure here must not lose the summary of the work above.
+  try {
+    summary.voucherClaimsReleased = await releaseAbandonedVoucherClaims(db)
+  } catch (err) {
+    console.error('[reconcile] could not release abandoned voucher claims', {
+      error: err,
+    })
+    summary.errors += 1
   }
 
   return summary

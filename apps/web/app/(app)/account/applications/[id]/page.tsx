@@ -22,7 +22,7 @@ export default async function ApplicationDetailPage({
   const { id } = await params
   const session = await getSession()
   if (!session) {
-    redirect(`/login?redirect=/account/applications/${id}`)
+    redirect(`/login?next=/account/applications/${id}`)
   }
   // The prefetch runs as the signed-in caller, so it can only ever land their
   // own application in the cache; the query answers null for anyone else's and

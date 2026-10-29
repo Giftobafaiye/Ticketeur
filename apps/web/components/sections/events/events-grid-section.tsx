@@ -27,10 +27,13 @@ import {
 } from '@/components/sections/events/event-filters'
 import { EventsToolbar } from '@/components/sections/events/events-toolbar'
 import { MobileFilterDrawer } from '@/components/sections/events/mobile-filter-drawer'
-import { useTRPC } from '@/lib/trpc'
-import { formatNaira } from '@/lib/event-display'
+import { EVENT_CATEGORIES } from '@ticketur/api/lib/event-categories'
 
-const PAGE_SIZE = 6
+import { useTRPC } from '@/lib/trpc'
+import { eventCardStatus, formatNaira } from '@/lib/event-display'
+import { EVENTS_GRID_PAGE_SIZE, eventsListInput } from '@/lib/events-list-query'
+
+const PAGE_SIZE = EVENTS_GRID_PAGE_SIZE
 const EVENT_PLACEHOLDER = '/hero-bg.png'
 
 export function EventsGridSection() {
@@ -40,12 +43,15 @@ export function EventsGridSection() {
       tab: parseAsStringLiteral(['upcoming', 'past']).withDefault('upcoming'),
       q: parseAsString.withDefault(''),
       sort: parseAsStringLiteral([
+        'soonest',
         'newest',
         'price-asc',
         'price-desc',
         'popular',
-      ]).withDefault('newest'),
-      categories: parseAsArrayOf(parseAsString).withDefault([]),
+      ]).withDefault('soonest'),
+      categories: parseAsArrayOf(
+        parseAsStringLiteral(EVENT_CATEGORIES)
+      ).withDefault([]),
       date: parseAsString.withDefault(''),
       priceMin: parseAsInteger.withDefault(PRICE_MIN_DEFAULT),
       priceMax: parseAsInteger.withDefault(PRICE_MAX_DEFAULT),
@@ -88,18 +94,12 @@ export function EventsGridSection() {
       ? 1
       : 0)
 
-  // Server-side tab/filter/search/page. Sort, category and location filters
-  // are not yet supported by the public.events.list router and are kept
-  // client-visible for now; they'll re-engage once the router gains those
-  // fields.
-  const listQuery = useQuery(
-    trpc.public.events.list.queryOptions({
-      tab: state.tab,
-      q: state.q,
-      page: state.page,
-      pageSize: PAGE_SIZE,
-    })
-  )
+  // Every filter, the search and the sort are applied by the server, so the
+  // count and the pages are of what actually matches.
+  const listQuery = useQuery({
+    ...trpc.public.events.list.queryOptions(eventsListInput(state)),
+    placeholderData: (prev) => prev,
+  })
 
   const total = listQuery.data?.total ?? 0
   const rows = listQuery.data?.rows ?? []
@@ -109,8 +109,8 @@ export function EventsGridSection() {
   const pageItems = rows.map((ev) => ({
     id: ev.id,
     title: ev.title,
-    category: '',
-    status: isPast ? ('past' as const) : ('upcoming' as const),
+    category: ev.category ?? '',
+    status: eventCardStatus({ ...ev, ended: isPast }),
     // A finished event's ticket price is no longer actionable, so the slot
     // carries the turnout instead — the reason to show past events at all.
     price: isPast

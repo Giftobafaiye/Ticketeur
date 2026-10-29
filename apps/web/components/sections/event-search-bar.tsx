@@ -1,8 +1,9 @@
 'use client'
 
-import { FormEvent, useMemo } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { parseAsString, useQueryStates } from 'nuqs'
+import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -18,7 +19,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@ticketur/ui/components/popover'
-import { formatShortDate, toDate, toIsoDate } from '@/lib/date'
+import {
+  formatEventDateRange,
+  formatShortDate,
+  toDate,
+  toIsoDate,
+} from '@/lib/date'
+import { useTRPC } from '@/lib/trpc'
 
 const SEARCH_KEYS = {
   q: parseAsString.withDefault(''),
@@ -26,12 +33,42 @@ const SEARCH_KEYS = {
   date: parseAsString.withDefault(''),
 }
 
+// The value after the user has stopped typing for `ms`, so the type-ahead
+// asks the server once per pause rather than once per keystroke.
+function useDebounced<T>(value: T, ms: number): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), ms)
+    return () => clearTimeout(t)
+  }, [value, ms])
+  return debounced
+}
+
 export function EventSearchBar({ className }: { className?: string }) {
   const router = useRouter()
+  const trpc = useTRPC()
   const [state, setState] = useQueryStates(SEARCH_KEYS, {
     shallow: true,
     throttleMs: 200,
   })
+  // Which dropdown is open, if any. Closed on blur after a beat so a click on
+  // an option lands before the list disappears.
+  const [open, setOpen] = useState<'q' | 'location' | null>(null)
+  // Each field closes only its own list: tabbing from the event field to the
+  // location field must not let the first blur close the second list.
+  const closeSoon = (which: 'q' | 'location') =>
+    setTimeout(() => setOpen((cur) => (cur === which ? null : cur)), 150)
+
+  const q = useDebounced(state.q.trim(), 200)
+  const location = useDebounced(state.location.trim(), 200)
+  const suggest = useQuery({
+    ...trpc.public.events.suggest.queryOptions({ q, location }),
+    enabled: open !== null,
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
+  })
+  const eventMatches = q ? (suggest.data?.events ?? []) : []
+  const places = suggest.data?.locations ?? []
 
   const hasFilters = Boolean(state.q || state.location || state.date)
 
@@ -46,9 +83,19 @@ export function EventSearchBar({ className }: { className?: string }) {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
+    setOpen(null)
+    // A search that names one event exactly goes straight to it.
+    const typed = state.q.trim().toLowerCase()
+    const exact = typed
+      ? eventMatches.filter((ev) => ev.title.toLowerCase() === typed)
+      : []
+    if (exact.length === 1 && exact[0]) {
+      router.push(`/events/${exact[0].slug}`)
+      return
+    }
     const params = new URLSearchParams()
-    if (state.q) params.set('q', state.q)
-    if (state.location) params.set('location', state.location)
+    if (state.q.trim()) params.set('q', state.q.trim())
+    if (state.location.trim()) params.set('location', state.location.trim())
     if (state.date) params.set('date', state.date)
     const qs = params.toString()
     router.push(qs ? `/events?${qs}` : '/events')
@@ -75,10 +122,40 @@ export function EventSearchBar({ className }: { className?: string }) {
                 type="text"
                 name="q"
                 value={state.q}
-                onChange={(e) => setState({ q: e.target.value || null })}
+                onChange={(e) => {
+                  setState({ q: e.target.value || null })
+                  setOpen('q')
+                }}
+                onFocus={() => setOpen('q')}
+                onBlur={() => closeSoon('q')}
                 placeholder="Event name or artist"
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={open === 'q' && eventMatches.length > 0}
+                aria-controls="event-search-suggestions"
                 className="w-full min-w-0 bg-transparent text-sm text-[#282828] outline-none placeholder:text-[#c6c6c6] md:text-base"
               />
+              {open === 'q' && eventMatches.length > 0 ? (
+                <Suggestions id="event-search-suggestions" label="Events">
+                  {eventMatches.map((ev) => (
+                    <SuggestionButton
+                      key={ev.id}
+                      onPick={() => {
+                        setOpen(null)
+                        router.push(`/events/${ev.slug}`)
+                      }}
+                    >
+                      <span className="block truncate font-medium text-[#282828]">
+                        {ev.title}
+                      </span>
+                      <span className="block truncate text-xs text-[#8a8a8a]">
+                        {formatEventDateRange(ev.eventDate, ev.endDate)} ·{' '}
+                        {ev.location}
+                      </span>
+                    </SuggestionButton>
+                  ))}
+                </Suggestions>
+              ) : null}
             </Field>
 
             <Field icon={Location01Icon} position="middle">
@@ -86,10 +163,36 @@ export function EventSearchBar({ className }: { className?: string }) {
                 type="text"
                 name="location"
                 value={state.location}
-                onChange={(e) => setState({ location: e.target.value || null })}
+                onChange={(e) => {
+                  setState({ location: e.target.value || null })
+                  setOpen('location')
+                }}
+                onFocus={() => setOpen('location')}
+                onBlur={() => closeSoon('location')}
                 placeholder="Location"
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={open === 'location' && places.length > 0}
+                aria-controls="location-search-suggestions"
                 className="w-full min-w-0 bg-transparent text-sm text-[#282828] outline-none placeholder:text-[#c6c6c6] md:text-base"
               />
+              {open === 'location' && places.length > 0 ? (
+                <Suggestions id="location-search-suggestions" label="Locations">
+                  {places.map((place) => (
+                    <SuggestionButton
+                      key={place}
+                      onPick={() => {
+                        setState({ location: place })
+                        setOpen(null)
+                      }}
+                    >
+                      <span className="block truncate text-[#282828]">
+                        {place}
+                      </span>
+                    </SuggestionButton>
+                  ))}
+                </Suggestions>
+              ) : null}
             </Field>
 
             <Field icon={Calendar03Icon} position="last">
@@ -188,7 +291,7 @@ function Field({
   return (
     <div
       className={cn(
-        'flex flex-1 items-center gap-2 border-b border-[#ededed] py-2 md:gap-4 md:border-b-0 md:px-4 md:py-4',
+        'relative flex flex-1 items-center gap-2 border-b border-[#ededed] py-2 md:gap-4 md:border-b-0 md:px-4 md:py-4',
         position === 'last' && 'border-b-0',
         position !== 'first' && 'md:border-l md:border-[#c6c6c6]'
       )}
@@ -200,5 +303,50 @@ function Field({
       />
       {children}
     </div>
+  )
+}
+
+function Suggestions({
+  id,
+  label,
+  children,
+}: {
+  id: string
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      id={id}
+      role="listbox"
+      aria-label={label}
+      className="absolute top-full right-0 left-0 z-30 mt-2 max-h-72 overflow-y-auto rounded-xl border border-[#e1e3ee] bg-white p-1.5 text-left shadow-[0_20px_60px_-15px_rgba(16,24,40,0.25)]"
+    >
+      {children}
+    </div>
+  )
+}
+
+function SuggestionButton({
+  onPick,
+  children,
+}: {
+  onPick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={false}
+      // mousedown, not click: it fires before the input's blur closes the list.
+      onMouseDown={(e) => {
+        e.preventDefault()
+        onPick()
+      }}
+      className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f4f1ff] focus:bg-[#f4f1ff] focus:outline-none"
+    >
+      {children}
+    </button>
   )
 }
