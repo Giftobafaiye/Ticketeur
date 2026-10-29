@@ -751,7 +751,9 @@ export const eventsRouter = createTRPCRouter({
           id: tickets.id,
           eventId: tickets.eventId,
           checkedIn: tickets.checkedIn,
+          checkedInAt: tickets.checkedInAt,
           organizerId: events.organizerId,
+          orderStatus: orders.status,
           recipientName: tickets.recipientName,
           buyerName: orders.buyerName,
           tierName: ticketTiers.name,
@@ -782,29 +784,55 @@ export const eventsRouter = createTRPCRouter({
       const name = ticket.recipientName || ticket.buyerName || 'Guest'
       const tierName = ticket.tierName ?? 'General'
 
-      // Already in the requested state (e.g. a double-tap, or the same QR
-      // scanned twice) — no-op, but tell the caller nothing changed so a
-      // scanner can distinguish a fresh check-in from a repeat scan.
-      if (ticket.checkedIn === input.checkedIn) {
+      // A refunded, cancelled or failed order's tickets do not get in. Undoing
+      // a check-in stays allowed so a mistaken scan can always be reversed.
+      if (input.checkedIn && ticket.orderStatus !== 'paid') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `This ticket is void — its order is ${ticket.orderStatus}.`,
+        })
+      }
+
+      // One conditional UPDATE decides who wins: it only matches a ticket
+      // still in the other state. Two gates scanning copies of one ticket in
+      // the same instant cannot both see it as fresh — the second UPDATE finds
+      // no row and is answered as a repeat scan. (A read followed by a write
+      // let both through.)
+      const checkedInAt = input.checkedIn ? new Date() : null
+      const [updated] = await ctx.db
+        .update(tickets)
+        .set({ checkedIn: input.checkedIn, checkedInAt })
+        .where(
+          and(
+            eq(tickets.id, ticket.id),
+            eq(tickets.checkedIn, !input.checkedIn)
+          )
+        )
+        .returning({ checkedInAt: tickets.checkedInAt })
+
+      if (!updated) {
+        // Already in the requested state (a double-tap, the same QR scanned
+        // twice, or another gate got there first) — tell the caller nothing
+        // changed so a scanner can flag a repeat scan, with when it happened.
+        const [current] = await ctx.db
+          .select({ checkedInAt: tickets.checkedInAt })
+          .from(tickets)
+          .where(eq(tickets.id, ticket.id))
+          .limit(1)
         return {
           id: ticket.id,
-          checkedIn: ticket.checkedIn,
+          checkedIn: input.checkedIn,
+          checkedInAt: current?.checkedInAt ?? ticket.checkedInAt,
           changed: false,
           name,
           tierName,
         }
       }
 
-      const checkedInAt = input.checkedIn ? new Date() : null
-      await ctx.db
-        .update(tickets)
-        .set({ checkedIn: input.checkedIn, checkedInAt })
-        .where(eq(tickets.id, ticket.id))
-
       return {
         id: ticket.id,
         checkedIn: input.checkedIn,
-        checkedInAt,
+        checkedInAt: updated.checkedInAt,
         changed: true,
         name,
         tierName,
