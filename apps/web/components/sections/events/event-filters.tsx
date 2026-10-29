@@ -9,21 +9,29 @@ import { cn } from '@ticketur/ui/lib/utils'
 import { Checkbox } from '@ticketur/ui/components/checkbox'
 import { Calendar } from '@ticketur/ui/components/calendar'
 import { Slider } from '@ticketur/ui/components/slider'
-import { toDate, toIsoDate } from '@/lib/date'
+import {
+  EVENT_CATEGORIES,
+  type EventCategory,
+} from '@ticketur/api/lib/event-categories'
 
-export const CATEGORIES = ['All', 'Music', 'Fashion', 'Art', 'Tech'] as const
-export type Category = (typeof CATEGORIES)[number]
+import { toDate, toIsoDate } from '@/lib/date'
+import {
+  PRICE_MAX_DEFAULT,
+  PRICE_MIN_DEFAULT,
+  PRICE_STEP,
+} from '@/lib/events-list-query'
+
+export { PRICE_MAX_DEFAULT, PRICE_MIN_DEFAULT }
 
 export type FiltersValue = {
-  categories: string[]
+  categories: EventCategory[]
   date: string
   priceMin: number
   priceMax: number
   location: string
 }
 
-export const PRICE_MIN_DEFAULT = 0
-export const PRICE_MAX_DEFAULT = 500
+const naira = (n: number) => `₦${n.toLocaleString('en-US')}`
 
 export function emptyFilters(): FiltersValue {
   return {
@@ -48,7 +56,7 @@ export function EventFilters({
 
   const isAllSelected = values.categories.length === 0
 
-  const toggleCategory = (cat: string) => {
+  const toggleCategory = (cat: EventCategory | 'All') => {
     if (cat === 'All') {
       onChange({ categories: [] })
       return
@@ -70,7 +78,7 @@ export function EventFilters({
             />
             <span>All</span>
           </label>
-          {CATEGORIES.slice(1).map((cat) => (
+          {EVENT_CATEGORIES.map((cat) => (
             <label
               key={cat}
               className="text-foreground flex cursor-pointer items-center gap-3 text-sm"
@@ -102,19 +110,23 @@ export function EventFilters({
           <Slider
             min={PRICE_MIN_DEFAULT}
             max={PRICE_MAX_DEFAULT}
-            step={10}
+            step={PRICE_STEP}
             value={[values.priceMin, values.priceMax]}
             onValueChange={(v) =>
-              onChange({ priceMin: v[0] ?? 0, priceMax: v[1] ?? 500 })
+              onChange({
+                priceMin: v[0] ?? PRICE_MIN_DEFAULT,
+                priceMax: v[1] ?? PRICE_MAX_DEFAULT,
+              })
             }
           />
           <div className="text-muted-foreground flex items-center justify-between text-xs">
-            <span>${values.priceMin}</span>
             <span>
-              $
+              {values.priceMin === 0 ? 'Free' : naira(values.priceMin)}
+            </span>
+            <span>
               {values.priceMax >= PRICE_MAX_DEFAULT
-                ? `${PRICE_MAX_DEFAULT}+`
-                : values.priceMax}
+                ? `${naira(PRICE_MAX_DEFAULT)}+`
+                : naira(values.priceMax)}
             </span>
           </div>
         </div>
@@ -131,7 +143,7 @@ export function EventFilters({
             type="text"
             value={values.location}
             onChange={(e) => onChange({ location: e.target.value })}
-            placeholder="City"
+            placeholder="City or venue"
             className="text-foreground placeholder:text-muted-foreground w-full min-w-0 bg-transparent text-sm outline-none"
           />
         </label>

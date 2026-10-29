@@ -12,6 +12,8 @@ import {
 
 import { Button } from '@ticketur/ui/components/button'
 
+import { useOpenTickets } from '@/components/sections/event-detail/event-tabs'
+
 export type EventHeroData = {
   title: string
   status: string
@@ -19,7 +21,8 @@ export type EventHeroData = {
   time?: string
   location: string
   imageUrl: string
-  buyHref?: string
+  ended?: boolean
+  soldOut?: boolean
 }
 
 export function EventHero({
@@ -29,6 +32,8 @@ export function EventHero({
   event: EventHeroData
   backHref?: string
 }) {
+  const openTickets = useOpenTickets()
+
   return (
     <section
       aria-label="Event hero"
@@ -101,9 +106,19 @@ export function EventHero({
               </div>
             </div>
 
-            <Button size="xl" asChild className="hidden md:inline-flex">
-              <Link href={event.buyHref ?? '#'}>Buy Ticket</Link>
-            </Button>
+            {event.ended ? (
+              <span className="inline-flex w-fit items-center rounded-lg bg-white/15 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm">
+                This event has ended
+              </span>
+            ) : (
+              <Button
+                size="xl"
+                className="w-full md:w-auto"
+                onClick={openTickets}
+              >
+                {event.soldOut ? 'View tickets' : 'Buy Ticket'}
+              </Button>
+            )}
           </div>
         </motion.div>
       </div>

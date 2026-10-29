@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
+import { Checkbox } from '@ticketur/ui/components/checkbox'
+
 import { RoleCard } from '@/components/auth/role-card'
 import { useTRPC } from '@/lib/trpc'
 import { getPostLoginPath } from '@/lib/post-login-redirect'
@@ -55,6 +57,7 @@ export function WelcomeRolePicker({
   const trpc = useTRPC()
   const router = useRouter()
   const [pendingRole, setPendingRole] = useState<SelectableRole | null>(null)
+  const [marketingOptIn, setMarketingOptIn] = useState(false)
 
   const chooseRole = useMutation(
     trpc.account.profile.chooseRole.mutationOptions({
@@ -97,11 +100,24 @@ export function WelcomeRolePicker({
             disabled={chooseRole.isPending}
             onSelect={() => {
               setPendingRole(r.role)
-              chooseRole.mutate({ role: r.role })
+              chooseRole.mutate({ role: r.role, marketingOptIn })
             }}
           />
         ))}
       </div>
+
+      <label className="text-muted-foreground flex max-w-172 cursor-pointer items-start gap-3 text-sm">
+        <Checkbox
+          checked={marketingOptIn}
+          onCheckedChange={(v) => setMarketingOptIn(v === true)}
+          disabled={chooseRole.isPending}
+          className="mt-0.5"
+        />
+        <span>
+          Send me news about events, offers and the Ticketeur newsletter. You
+          can change this any time in your account settings.
+        </span>
+      </label>
 
       <p className="text-muted-foreground max-w-172 text-center text-sm">
         Organizers and vendors are reviewed before going live — you can finish

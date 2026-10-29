@@ -21,7 +21,7 @@ const DISCOVER_LINKS = [
 
 const LEGAL_LINKS = [
   { href: '/privacy', label: 'Privacy Policy' },
-  { href: '/terms', label: 'Terms & Conditions' },
+  { href: '/terms/full', label: 'Terms & Conditions' },
 ] as const
 
 const SOCIALS: {

@@ -12,9 +12,7 @@ import { VendorHero } from '@/components/sections/vendor-detail/vendor-hero'
 import { VendorProfileTabs } from '@/components/sections/vendor-detail/vendor-profile-tabs'
 import type { VendorEventCard } from '@/components/sections/vendor-detail/vendor-events-tab'
 
-const VENDOR_PLACEHOLDER = '/vendor-placeholder.png'
-const BANNER_PLACEHOLDER =
-  'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1600&q=80'
+const VENDOR_PLACEHOLDER = '/vendor-placeholder.svg'
 
 function toEventCard(ev: {
   id: string
@@ -108,7 +106,7 @@ export function VendorDetailContent({ id }: { id: string }) {
     <>
       <VendorHero
         vendor={vendor}
-        bannerUrl={data.bannerUrl ?? BANNER_PLACEHOLDER}
+        bannerUrl={data.bannerUrl ?? undefined}
         avgRating={data.avgRating}
         reviewCount={data.reviewCount}
       />

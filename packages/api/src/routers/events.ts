@@ -1,6 +1,5 @@
 import { TRPCError } from '@trpc/server'
 import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
-import { tasks } from '@trigger.dev/sdk'
 import { z } from 'zod'
 
 import {
@@ -17,8 +16,9 @@ import { createTRPCRouter, organizerProcedure } from '../trpc'
 import { newId } from '../lib/ids'
 import { generateUniqueEventSlug } from '../lib/slug'
 import { logActivity } from '../lib/activity'
-import { getBaseUrl } from '../lib/base-url'
+import { deliverExternalVendorInvites } from '../lib/vendor-invites'
 import { applyEventEdit, assertEventEditAllowed } from '../lib/events'
+import { EVENT_CATEGORIES } from '../lib/event-categories'
 
 // ─── Creating an event: the status it starts in ────────────────────────────
 //
@@ -82,6 +82,7 @@ const createEventInput = z.object({
   endDate: z.string().nullable().optional(),
   time: z.string().min(1),
   location: z.string().trim().min(1),
+  category: z.enum(EVENT_CATEGORIES).nullable().optional(),
   bannerUrl: z.string().nullable().optional(),
   features: z.array(z.string().trim()).default([]),
   tiers: z.array(ticketTierInput).min(1),
@@ -113,6 +114,7 @@ const updateEventInput = z
     endDate: z.string().nullable().optional(),
     time: z.string().min(1),
     location: z.string().trim().min(1),
+    category: z.enum(EVENT_CATEGORIES).nullable().optional(),
     bannerUrl: z.string().nullable().optional(),
     features: z.array(z.string().trim()).default([]),
     tiers: z.array(updateTicketTierInput).min(1),
@@ -177,6 +179,7 @@ export const eventsRouter = createTRPCRouter({
               : null,
           eventTime: input.time,
           location: input.location,
+          category: input.category ?? null,
           bannerUrl: input.bannerUrl ?? null,
           features: input.features,
           status,
@@ -220,106 +223,30 @@ export const eventsRouter = createTRPCRouter({
         }
 
         if (input.externalInvites.length > 0) {
-          // For each external invite: ensure a vendor user account exists
-          // (creating a pending one if needed), then link via eventVendors.
-          // We still record the original invite payload (incl. phone) in
-          // externalVendorInvites so the organizer can see who they invited.
+          // Recorded only. No account is touched and nothing is emailed until
+          // the event is approved — see deliverExternalVendorInvites.
           await tx.insert(externalVendorInvites).values(
             input.externalInvites.map((inv) => ({
               id: newId('einv'),
               eventId,
               businessName: inv.businessName,
               contactName: inv.contactName,
-              email: inv.email,
+              email: inv.email.toLowerCase(),
               phone: inv.phone,
             }))
           )
-
-          for (const inv of input.externalInvites) {
-            const existing = await tx
-              .select({
-                id: user.id,
-                role: user.role,
-                vendorApprovalStatus: user.vendorApprovalStatus,
-              })
-              .from(user)
-              .where(eq(user.email, inv.email))
-              .limit(1)
-
-            let vendorId: string
-
-            if (existing[0]) {
-              vendorId = existing[0].id
-              // Promote existing accounts to vendor (still pending) if they
-              // weren't a vendor yet. Don't downgrade approved vendors.
-              if (existing[0].role !== 'vendor') {
-                await tx
-                  .update(user)
-                  .set({
-                    role: 'vendor',
-                    vendorApprovalStatus: 'pending',
-                    businessName: inv.businessName,
-                  })
-                  .where(eq(user.id, vendorId))
-              }
-            } else {
-              // Stub vendor account; they'll set a password via the
-              // forgot-password / sign-up flow we send in the invite email.
-              vendorId = newId('usr')
-              const now = new Date()
-              await tx.insert(user).values({
-                id: vendorId,
-                name: inv.contactName,
-                email: inv.email,
-                emailVerified: false,
-                role: 'vendor',
-                vendorApprovalStatus: 'pending',
-                businessName: inv.businessName,
-                createdAt: now,
-                updatedAt: now,
-              })
-            }
-
-            // Link to this event (idempotent: skip if already linked).
-            const alreadyLinked = await tx
-              .select({ id: eventVendors.id })
-              .from(eventVendors)
-              .where(
-                and(
-                  eq(eventVendors.eventId, eventId),
-                  eq(eventVendors.vendorId, vendorId)
-                )
-              )
-              .limit(1)
-
-            if (!alreadyLinked[0]) {
-              await tx.insert(eventVendors).values({
-                id: newId('evnd'),
-                eventId,
-                vendorId,
-                status: 'invited',
-              })
-            }
-          }
         }
       })
 
-      // Fire invite emails outside the transaction. Failures here must not
-      // roll back the event creation — the organizer can resend invites later.
-      if (input.externalInvites.length > 0) {
-        const baseUrl = getBaseUrl()
-
-        for (const inv of input.externalInvites) {
-          const signupUrl = `${baseUrl}/signup?role=vendor&invite=vendor&email=${encodeURIComponent(inv.email)}`
-          void tasks.trigger('send-vendor-invite', {
-            email: inv.email,
-            businessName: inv.businessName,
-            contactName: inv.contactName,
-            organizerName: ctx.session.user.name,
-            eventTitle: input.title,
-            signupUrl,
+      // An admin creating the event live is the approval, so the invites go
+      // out now. Failures here must not undo the event creation.
+      if (status === 'upcoming' && input.externalInvites.length > 0) {
+        await deliverExternalVendorInvites(ctx.db, eventId).catch((error) => {
+          console.error('[events] vendor invites failed to send', {
+            eventId,
+            error,
           })
-        }
+        })
       }
 
       await logActivity(ctx, {
@@ -370,6 +297,7 @@ export const eventsRouter = createTRPCRouter({
         endDate: input.endDate ?? null,
         time: input.time,
         location: input.location,
+        category: input.category,
         bannerUrl: input.bannerUrl ?? null,
         features: input.features,
         tiers: input.tiers,
@@ -828,7 +756,9 @@ export const eventsRouter = createTRPCRouter({
           id: tickets.id,
           eventId: tickets.eventId,
           checkedIn: tickets.checkedIn,
+          checkedInAt: tickets.checkedInAt,
           organizerId: events.organizerId,
+          orderStatus: orders.status,
           recipientName: tickets.recipientName,
           buyerName: orders.buyerName,
           tierName: ticketTiers.name,
@@ -859,29 +789,55 @@ export const eventsRouter = createTRPCRouter({
       const name = ticket.recipientName || ticket.buyerName || 'Guest'
       const tierName = ticket.tierName ?? 'General'
 
-      // Already in the requested state (e.g. a double-tap, or the same QR
-      // scanned twice) — no-op, but tell the caller nothing changed so a
-      // scanner can distinguish a fresh check-in from a repeat scan.
-      if (ticket.checkedIn === input.checkedIn) {
+      // A refunded, cancelled or failed order's tickets do not get in. Undoing
+      // a check-in stays allowed so a mistaken scan can always be reversed.
+      if (input.checkedIn && ticket.orderStatus !== 'paid') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `This ticket is void — its order is ${ticket.orderStatus}.`,
+        })
+      }
+
+      // One conditional UPDATE decides who wins: it only matches a ticket
+      // still in the other state. Two gates scanning copies of one ticket in
+      // the same instant cannot both see it as fresh — the second UPDATE finds
+      // no row and is answered as a repeat scan. (A read followed by a write
+      // let both through.)
+      const checkedInAt = input.checkedIn ? new Date() : null
+      const [updated] = await ctx.db
+        .update(tickets)
+        .set({ checkedIn: input.checkedIn, checkedInAt })
+        .where(
+          and(
+            eq(tickets.id, ticket.id),
+            eq(tickets.checkedIn, !input.checkedIn)
+          )
+        )
+        .returning({ checkedInAt: tickets.checkedInAt })
+
+      if (!updated) {
+        // Already in the requested state (a double-tap, the same QR scanned
+        // twice, or another gate got there first) — tell the caller nothing
+        // changed so a scanner can flag a repeat scan, with when it happened.
+        const [current] = await ctx.db
+          .select({ checkedInAt: tickets.checkedInAt })
+          .from(tickets)
+          .where(eq(tickets.id, ticket.id))
+          .limit(1)
         return {
           id: ticket.id,
-          checkedIn: ticket.checkedIn,
+          checkedIn: input.checkedIn,
+          checkedInAt: current?.checkedInAt ?? ticket.checkedInAt,
           changed: false,
           name,
           tierName,
         }
       }
 
-      const checkedInAt = input.checkedIn ? new Date() : null
-      await ctx.db
-        .update(tickets)
-        .set({ checkedIn: input.checkedIn, checkedInAt })
-        .where(eq(tickets.id, ticket.id))
-
       return {
         id: ticket.id,
         checkedIn: input.checkedIn,
-        checkedInAt,
+        checkedInAt: updated.checkedInAt,
         changed: true,
         name,
         tierName,

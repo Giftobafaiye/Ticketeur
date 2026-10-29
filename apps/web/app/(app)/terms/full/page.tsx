@@ -43,6 +43,17 @@ export default function TermsPage() {
           <p className="font-heading text-base font-semibold text-white/90 md:text-xl">
             Last updated: {TERMS_LAST_UPDATED}
           </p>
+          {/* The same text as below, as the PDF document — opens in the
+              browser's viewer on its own page, where it can be saved or
+              printed. */}
+          <a
+            href="/terms/full/pdf"
+            target="_blank"
+            rel="noopener"
+            className="mt-3 inline-flex h-11 items-center rounded-lg bg-white px-5 text-sm font-semibold text-[#1f1f1f] transition-colors hover:bg-white/90"
+          >
+            View as PDF
+          </a>
         </div>
       </section>
 

@@ -4,12 +4,20 @@
  * Run from monorepo root:
  *   pnpm --filter=admin seed:admin
  *
- * Defaults:
- *   email    admin@useticketeur.com
- *   password ChangeMe!2026   (override via ADMIN_SEED_PASSWORD)
+ * Required:
+ *   ADMIN_SEED_PASSWORD  at least 14 characters. There is deliberately no
+ *                        default: a default password lives in the public
+ *                        source, so any admin seeded with it is one anybody
+ *                        can sign in as.
+ * Optional:
+ *   ADMIN_SEED_EMAIL     default admin@useticketeur.com
+ *   ADMIN_SEED_NAME      default Platform Admin
+ *
+ * Every admin has two-factor sign-in on (a code emailed at each sign-in); the
+ * admin console refuses an admin session without it.
  *
  * Idempotent: if a user with that email already exists, it just promotes
- * them to `role = 'admin'` (and sets emailVerified true) — no password reset.
+ * them to `role = 'admin'` (and sets emailVerified + 2FA) — no password reset.
  */
 
 import 'dotenv/config'
@@ -20,10 +28,17 @@ import { hashPassword } from 'better-auth/crypto'
 import { db, user as userTable, account as accountTable } from '@ticketur/db'
 
 const EMAIL = process.env.ADMIN_SEED_EMAIL ?? 'admin@useticketeur.com'
-const PASSWORD = process.env.ADMIN_SEED_PASSWORD ?? 'ChangeMe!2026'
+const PASSWORD = process.env.ADMIN_SEED_PASSWORD ?? ''
+const MIN_PASSWORD_LENGTH = 14
 const NAME = process.env.ADMIN_SEED_NAME ?? 'Platform Admin'
 
 async function main() {
+  if (PASSWORD.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(
+      `ADMIN_SEED_PASSWORD must be set and at least ${MIN_PASSWORD_LENGTH} characters long.`
+    )
+  }
+
   const existing = await db
     .select({ id: userTable.id, role: userTable.role })
     .from(userTable)
@@ -37,7 +52,12 @@ async function main() {
     if (row.role !== 'admin') {
       await db
         .update(userTable)
-        .set({ role: 'admin', emailVerified: true, updatedAt: now })
+        .set({
+          role: 'admin',
+          emailVerified: true,
+          twoFactorEnabled: true,
+          updatedAt: now,
+        })
         .where(eq(userTable.id, row.id))
       console.log(`Promoted existing user to admin: ${EMAIL}`)
     } else {
@@ -58,7 +78,7 @@ async function main() {
       emailVerified: true,
       image: null,
       role: 'admin',
-      twoFactorEnabled: false,
+      twoFactorEnabled: true,
       createdAt: now,
       updatedAt: now,
     })
@@ -75,7 +95,6 @@ async function main() {
   })
 
   console.log(`Seeded admin: ${EMAIL}`)
-  console.log(`Password: ${PASSWORD}`)
   console.log(`Sign in at /sign-in (admin app — port 3001).`)
 }
 

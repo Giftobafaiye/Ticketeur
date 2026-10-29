@@ -5,6 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Search01Icon } from '@hugeicons/core-free-icons'
 
 import { cn } from '@ticketur/ui/lib/utils'
+import type { EventsListSort } from '@/lib/events-list-query'
 import {
   Select,
   SelectContent,
@@ -14,7 +15,7 @@ import {
 } from '@ticketur/ui/components/select'
 
 export type EventTab = 'upcoming' | 'past'
-export type EventSort = 'newest' | 'price-asc' | 'price-desc' | 'popular'
+export type EventSort = EventsListSort
 
 const TABS: { key: EventTab; label: string }[] = [
   { key: 'upcoming', label: 'Upcoming Events' },
@@ -84,13 +85,16 @@ export function EventsToolbar({
 
         <Select
           value={sort}
+          // Past events are always shown most recent first.
+          disabled={tab === 'past'}
           onValueChange={(v) => onSortChange(v as EventSort)}
         >
           <SelectTrigger className="h-10 w-[140px]">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="newest">Newest first</SelectItem>
+            <SelectItem value="soonest">Soonest first</SelectItem>
+            <SelectItem value="newest">Newly added</SelectItem>
             <SelectItem value="price-asc">Price: low to high</SelectItem>
             <SelectItem value="price-desc">Price: high to low</SelectItem>
             <SelectItem value="popular">Most popular</SelectItem>

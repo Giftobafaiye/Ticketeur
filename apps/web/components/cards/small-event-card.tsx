@@ -8,8 +8,12 @@ import { Calendar03Icon, Location01Icon } from '@hugeicons/core-free-icons'
 
 import { cn } from '@ticketur/ui/lib/utils'
 import { formatEventDateRange } from '@/lib/date'
+import {
+  EVENT_CARD_STATUS_LABEL,
+  type EventCardStatus,
+} from '@/lib/event-display'
 
-export type SmallEventStatus = 'upcoming' | 'past' | 'live' | 'sold-out'
+export type SmallEventStatus = EventCardStatus
 
 export type SmallEventCardProps = {
   id?: string
@@ -33,12 +37,7 @@ const STATUS_CLASSES: Record<SmallEventStatus, string> = {
     'bg-[#ededed] text-[#6d6d6d] dark:bg-white/10 dark:text-muted-foreground',
 }
 
-const STATUS_LABEL: Record<SmallEventStatus, string> = {
-  upcoming: 'Upcoming',
-  past: 'Past',
-  live: 'Live now',
-  'sold-out': 'Sold out',
-}
+const STATUS_LABEL = EVENT_CARD_STATUS_LABEL
 
 export function SmallEventCard({
   title,
@@ -73,9 +72,11 @@ export function SmallEventCard({
 
       <div className="flex flex-1 flex-col gap-3 px-4 pt-4">
         <div className="flex items-center gap-2">
-          <span className="dark:text-muted-foreground inline-flex rounded bg-[#f1f1f1] px-2 py-0.5 text-[10px] font-semibold tracking-wider text-[#6d6d6d] uppercase dark:bg-white/10">
-            {category}
-          </span>
+          {category ? (
+            <span className="dark:text-muted-foreground inline-flex rounded bg-[#f1f1f1] px-2 py-0.5 text-[10px] font-semibold tracking-wider text-[#6d6d6d] uppercase dark:bg-white/10">
+              {category}
+            </span>
+          ) : null}
           {status ? (
             <span
               className={cn(
@@ -127,7 +128,11 @@ export function SmallEventCard({
               : 'text-primary hover:text-primary-hover'
           )}
         >
-          {status === 'past' ? 'Closed' : 'Buy Ticket'}
+          {status === 'past'
+            ? 'View recap'
+            : status === 'sold-out'
+              ? 'View event'
+              : 'Buy Ticket'}
         </Link>
       </div>
     </motion.article>

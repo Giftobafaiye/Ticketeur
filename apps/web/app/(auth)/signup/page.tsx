@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { SignupForm } from '@/components/auth/signup-form'
 import { resolveSignupRole } from '@/lib/signup-roles'
+import { enabledSocialProviders } from '@ticketur/auth'
+
 import { getSession } from '@/lib/auth'
 import {
   getPostLoginPath,
@@ -86,6 +88,7 @@ export default async function SignupPage(props: PageProps<'/signup'>) {
         initialEmail={initialEmail}
         lockEmail={isVendorInvite && initialEmail.length > 0}
         next={next}
+        socialProviders={enabledSocialProviders()}
       />
 
       <p className="text-muted-foreground mt-2 text-center text-sm md:hidden">

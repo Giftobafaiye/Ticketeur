@@ -80,6 +80,26 @@ function TermsHero() {
         <p className="font-heading text-base leading-[28px] font-semibold text-[#E2E8F0] md:text-[20px]">
           Last updated: {TERMS_OVERVIEW_LAST_UPDATED}
         </p>
+        <p className="text-sm text-white/80 md:text-base">
+          This page is a plain-English guide. The binding agreement is the full
+          Terms of Service.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/terms/full/pdf"
+            target="_blank"
+            rel="noopener"
+            className="inline-flex h-11 items-center rounded-lg bg-white px-5 text-sm font-semibold text-[#31156B] transition-colors hover:bg-white/90"
+          >
+            Terms of Service (PDF)
+          </Link>
+          <Link
+            href="/terms/full"
+            className="inline-flex h-11 items-center rounded-lg border border-white/40 px-5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+          >
+            Read on this site
+          </Link>
+        </div>
       </div>
     </section>
   )

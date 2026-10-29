@@ -61,9 +61,11 @@ export function EventCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-6">
-        <span className="bg-muted text-muted-foreground inline-flex w-fit rounded px-2 py-1.5 text-sm font-semibold tracking-wider uppercase">
-          {category}
-        </span>
+        {category ? (
+          <span className="bg-muted text-muted-foreground inline-flex w-fit rounded px-2 py-1.5 text-sm font-semibold tracking-wider uppercase">
+            {category}
+          </span>
+        ) : null}
 
         <div className="flex items-start justify-between gap-4">
           <h3 className="font-heading text-foreground text-xl font-bold">

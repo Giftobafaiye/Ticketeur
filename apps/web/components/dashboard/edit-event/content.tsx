@@ -9,9 +9,19 @@ import { toast } from 'sonner'
 import { Button } from '@ticketur/ui/components/button'
 
 import { useTRPC } from '@/lib/trpc'
+import {
+  isEventCategory,
+  type EventCategory,
+} from '@ticketur/api/lib/event-categories'
+
 import { type CreateEventValues } from '@/lib/create-event-schema'
 
 import { FormView } from '@/components/dashboard/create-event/form-view'
+
+// A stored category the form can show, or empty for the organizer to pick.
+function toCategory(value: string | null | undefined): EventCategory | null {
+  return isEventCategory(value) ? value : null
+}
 
 // Statuses an organizer can still edit. Archived/suspended events are frozen
 // (the server enforces this too).
@@ -79,6 +89,7 @@ export function EditEventContent({ id }: { id: string }) {
         endDate: pc.endDate ?? null,
         time: pc.time,
         location: pc.location,
+        category: toCategory(pc.category ?? event.category),
         features: pc.features,
         tiers: pc.tiers.map((t) => ({
           id: t.id,
@@ -101,6 +112,7 @@ export function EditEventContent({ id }: { id: string }) {
       endDate: event.endDate,
       time: event.eventTime,
       location: event.location,
+      category: toCategory(event.category),
       features: event.features,
       tiers: tiers.map((t) => ({
         id: t.id,
@@ -198,6 +210,7 @@ function EditForm({
     endDate: string | null
     time: string
     location: string
+    category: EventCategory | null
     bannerUrl: string | null
     features: string[]
     tiers: {
@@ -229,6 +242,7 @@ function EditForm({
       endDate: v.endDate,
       time: v.time,
       location: v.location,
+      category: v.category,
       bannerUrl: banner,
       features: v.features,
       tiers: v.tiers.map((t) => ({
