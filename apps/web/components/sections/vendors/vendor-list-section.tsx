@@ -47,7 +47,7 @@ const CATEGORY_CHIPS = [
 ] as const
 
 const PAGE_SIZE = 8
-const VENDOR_PLACEHOLDER = '/vendor-placeholder.png'
+const VENDOR_PLACEHOLDER = '/vendor-placeholder.svg'
 
 export function VendorListSection() {
   const trpc = useTRPC()

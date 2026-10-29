@@ -54,7 +54,10 @@ export function EventSearchBar({ className }: { className?: string }) {
   // Which dropdown is open, if any. Closed on blur after a beat so a click on
   // an option lands before the list disappears.
   const [open, setOpen] = useState<'q' | 'location' | null>(null)
-  const closeSoon = () => setTimeout(() => setOpen(null), 150)
+  // Each field closes only its own list: tabbing from the event field to the
+  // location field must not let the first blur close the second list.
+  const closeSoon = (which: 'q' | 'location') =>
+    setTimeout(() => setOpen((cur) => (cur === which ? null : cur)), 150)
 
   const q = useDebounced(state.q.trim(), 200)
   const location = useDebounced(state.location.trim(), 200)
@@ -124,7 +127,7 @@ export function EventSearchBar({ className }: { className?: string }) {
                   setOpen('q')
                 }}
                 onFocus={() => setOpen('q')}
-                onBlur={closeSoon}
+                onBlur={() => closeSoon('q')}
                 placeholder="Event name or artist"
                 autoComplete="off"
                 role="combobox"
@@ -165,7 +168,7 @@ export function EventSearchBar({ className }: { className?: string }) {
                   setOpen('location')
                 }}
                 onFocus={() => setOpen('location')}
-                onBlur={closeSoon}
+                onBlur={() => closeSoon('location')}
                 placeholder="Location"
                 autoComplete="off"
                 role="combobox"

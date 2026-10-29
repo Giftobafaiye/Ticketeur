@@ -12,7 +12,7 @@ import { VendorHero } from '@/components/sections/vendor-detail/vendor-hero'
 import { VendorProfileTabs } from '@/components/sections/vendor-detail/vendor-profile-tabs'
 import type { VendorEventCard } from '@/components/sections/vendor-detail/vendor-events-tab'
 
-const VENDOR_PLACEHOLDER = '/vendor-placeholder.png'
+const VENDOR_PLACEHOLDER = '/vendor-placeholder.svg'
 
 function toEventCard(ev: {
   id: string
