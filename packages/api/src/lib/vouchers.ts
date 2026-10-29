@@ -1,7 +1,10 @@
-import { and, eq, isNull, or, sql } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull, lt, or, sql } from 'drizzle-orm'
 
 import type { Database, VoucherDiscountType } from '@ticketur/db'
-import { events, vouchers } from '@ticketur/db'
+import { events, orders, vouchers } from '@ticketur/db'
+
+// The tx handle drizzle hands to `db.transaction(async (tx) => …)`.
+type DbTransaction = Parameters<Parameters<Database['transaction']>[0]>[0]
 
 // Why a voucher didn't apply — surfaced to the buyer so the "Apply" UI can
 // show a precise message instead of a generic failure.
@@ -117,4 +120,99 @@ export async function validateVoucher(
       args.subtotalMinor
     ),
   }
+}
+
+// ─── Redemption accounting ──────────────────────────────────────────────────
+//
+// validateVoucher's cap check is advisory: it reads the count, and any number
+// of checkouts can read the same "one use left" at once. The cap is decided
+// here instead, by one conditional UPDATE that only increments while there is
+// room — the idiom mintOrderTickets uses on ticket stock. A zero-row result IS
+// the refusal.
+//
+// A use is claimed when the order is created, free or paid, and the order
+// records it (orders.voucher_counted). An unpaid order gives its use back when
+// it fails, or when it is abandoned (releaseAbandonedVoucherClaims). An order
+// that is paid without holding a claim — one created before claims existed,
+// or one whose claim was released and that was then paid after all — is
+// counted at fulfilment, unconditionally: the buyer has paid the discounted
+// price, so the discount is honoured.
+
+/** Takes one use of the voucher if it has one left. False when it is spent. */
+export async function claimVoucherRedemption(
+  tx: DbTransaction,
+  voucherId: string
+): Promise<boolean> {
+  const [row] = await tx
+    .update(vouchers)
+    .set({ redeemedCount: sql`${vouchers.redeemedCount} + 1` })
+    .where(
+      and(
+        eq(vouchers.id, voucherId),
+        or(
+          isNull(vouchers.maxRedemptions),
+          lt(vouchers.redeemedCount, vouchers.maxRedemptions)
+        )
+      )
+    )
+    .returning({ id: vouchers.id })
+  return row !== undefined
+}
+
+/**
+ * Gives back the use an unpaid order claimed. Idempotent: the order's flag is
+ * cleared by the same conditional UPDATE that decides whether to give it back.
+ */
+export async function releaseVoucherClaim(
+  tx: DbTransaction,
+  orderId: string
+): Promise<void> {
+  const [row] = await tx
+    .update(orders)
+    .set({ voucherCounted: false })
+    .where(
+      and(
+        eq(orders.id, orderId),
+        eq(orders.voucherCounted, true),
+        sql`${orders.status} <> 'paid'`,
+        isNotNull(orders.voucherId)
+      )
+    )
+    .returning({ voucherId: orders.voucherId })
+  if (!row?.voucherId) return
+  await tx
+    .update(vouchers)
+    .set({ redeemedCount: sql`greatest(${vouchers.redeemedCount} - 1, 0)` })
+    .where(eq(vouchers.id, row.voucherId))
+}
+
+// How long an unpaid checkout holds a voucher use. Long enough for a buyer to
+// finish paying at Flutterwave; short enough that abandoned checkouts cannot
+// keep a limited code spent.
+const VOUCHER_HOLD = sql.raw(`interval '1 hour'`)
+
+/**
+ * Gives back the uses held by checkouts still unpaid past VOUCHER_HOLD. The
+ * orders stay pending, so a payment that lands later still fulfils them (and
+ * is counted then). Returns how many were released.
+ */
+export async function releaseAbandonedVoucherClaims(
+  db: Database,
+  limit = 200
+): Promise<number> {
+  const stale = await db
+    .select({ id: orders.id })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.voucherCounted, true),
+        eq(orders.status, 'pending'),
+        sql`${orders.createdAt} < now() - ${VOUCHER_HOLD}`
+      )
+    )
+    .limit(limit)
+  for (const { id } of stale) {
+    await db.transaction((tx) => releaseVoucherClaim(tx, id))
+  }
+  return stale.length
 }

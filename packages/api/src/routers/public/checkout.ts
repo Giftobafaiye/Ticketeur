@@ -1,8 +1,8 @@
 import { TRPCError } from '@trpc/server'
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { events, orders, orderItems, ticketTiers, user, vouchers } from '@ticketur/db'
+import { events, orders, orderItems, ticketTiers, user } from '@ticketur/db'
 
 import { createTRPCRouter, publicProcedure } from '../../trpc'
 import { newId } from '../../lib/ids'
@@ -18,7 +18,7 @@ import { calculateFeeMinor } from '../../lib/fees'
 import { getTicketFeeBps } from '../../lib/platform-settings'
 import { PAYMENT_CURRENCY, toFlutterwaveAmount } from '../../lib/payment-amount'
 import { hasEnded } from '../../lib/predicates'
-import { validateVoucher } from '../../lib/vouchers'
+import { claimVoucherRedemption, validateVoucher } from '../../lib/vouchers'
 
 const MAX_TICKETS_PER_ORDER = 50
 
@@ -118,7 +118,10 @@ export const publicCheckoutRouter = createTRPCRouter({
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Event not found' })
     }
     if (event.status !== 'upcoming') {
-      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Event is not on sale' })
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Event is not on sale',
+      })
     }
     // A finished event keeps status 'upcoming' — nothing sweeps the table to
     // retire events, so the status check above does not cover it. Without this,
@@ -254,14 +257,25 @@ export const publicCheckoutRouter = createTRPCRouter({
         feeMinor,
         totalMinor,
         voucherId,
+        voucherCounted: voucherId !== null,
         // Persist attendees so a paid group order can mint to them at webhook
         // fulfillment (tickets aren't minted until payment for paid orders).
-        attendees:
-          input.mode === 'group' ? (input.attendees ?? []) : null,
+        attendees: input.mode === 'group' ? (input.attendees ?? []) : null,
         status: isFree ? 'paid' : 'pending',
         flwTxRef: isFree ? null : txRef,
         paidAt: isFree ? new Date() : null,
       })
+
+      // The voucher's use is taken here, for free and paid orders alike, by a
+      // conditional increment: simultaneous checkouts cannot all squeeze
+      // through validateVoucher's "one use left". Refusing rolls the order
+      // back.
+      if (voucherId && !(await claimVoucherRedemption(tx, voucherId))) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'That voucher has reached its redemption limit.',
+        })
+      }
 
       await tx.insert(orderItems).values(
         lines.map((l) => ({
@@ -289,12 +303,6 @@ export const publicCheckoutRouter = createTRPCRouter({
             })
           }
           throw err
-        }
-        if (voucherId) {
-          await tx
-            .update(vouchers)
-            .set({ redeemedCount: sql`${vouchers.redeemedCount} + 1` })
-            .where(eq(vouchers.id, voucherId))
         }
       }
     })

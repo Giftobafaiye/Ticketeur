@@ -254,6 +254,10 @@ export const orders = pgTable(
     // FK here would form an import cycle — same pattern as reports.subjectId).
     // The applied amount is captured in discountMinor regardless.
     voucherId: text('voucher_id'),
+    // True while this order holds one of the voucher's uses (claimed at
+    // checkout, given back if the order goes unpaid). See the redemption
+    // accounting notes in packages/api/src/lib/vouchers.ts.
+    voucherCounted: boolean('voucher_counted').notNull().default(false),
     // Group ("For Multiple") orders: the per-attendee recipients captured at
     // checkout. NULL for a "For Myself" order. Needed because paid orders mint
     // their tickets later (at webhook fulfillment), so the attendee list has to
