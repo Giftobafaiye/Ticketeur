@@ -1,15 +1,28 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { normalizeWebUrl } from '../../lib/web-url'
 
 import { user } from '@ticketur/db'
 
 import { createTRPCRouter, vendorProcedure } from '../../trpc'
 
+// A link as people paste it ("facebook.com/mybiz" included), stored as an
+// absolute http(s) URL. Empty clears it. See normalizeWebUrl.
 const optionalUrl = z
   .string()
   .trim()
-  .url('Enter a valid URL')
-  .or(z.literal(''))
+  .transform((value, ctx) => {
+    if (!value) return ''
+    const url = normalizeWebUrl(value)
+    if (!url) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Enter a web link, e.g. facebook.com/yourpage',
+      })
+      return z.NEVER
+    }
+    return url
+  })
   .optional()
 
 const profileInput = z.object({

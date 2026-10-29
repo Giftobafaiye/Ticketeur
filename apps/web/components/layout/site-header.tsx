@@ -32,9 +32,23 @@ const NAV_LINKS = [
   { href: '/vendors', label: 'For Vendors' },
 ] as const
 
-function isActivePath(pathname: string, href: string) {
-  if (href === '/') return pathname === '/'
-  return pathname === href || pathname.startsWith(`${href}/`)
+type NavHref = (typeof NAV_LINKS)[number]['href']
+
+// Exactly one link is active per page. A plain prefix match lit up two at
+// once under /vendors: "For Vendors" (/vendors) matched /vendors/list too, so
+// the marketplace looked like it was both pages. The marketplace owns every
+// vendor page (the list and each profile); "For Vendors" is only the pitch.
+function activeNavHref(pathname: string): NavHref | null {
+  if (pathname === '/vendors') return '/vendors'
+  if (pathname.startsWith('/vendors/')) return '/vendors/list'
+  for (const { href } of NAV_LINKS) {
+    if (pathname === href || pathname.startsWith(`${href}/`)) return href
+  }
+  return null
+}
+
+function isActivePath(pathname: string, href: NavHref) {
+  return activeNavHref(pathname) === href
 }
 
 function getInitials(name: string) {

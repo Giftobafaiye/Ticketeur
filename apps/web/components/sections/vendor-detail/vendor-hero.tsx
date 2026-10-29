@@ -26,10 +26,6 @@ export function VendorHero({
   avgRating: number | null
   reviewCount: number
 }) {
-  const banner =
-    bannerUrl ??
-    'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1600&q=80'
-
   return (
     <section
       aria-label="Vendor hero"
@@ -55,14 +51,24 @@ export function VendorHero({
           className="relative w-full"
         >
           <div className="bg-muted relative -z-10 aspect-1360/360 w-full overflow-hidden rounded-[20px] md:aspect-1360/320">
-            <Image
-              src={banner}
-              alt=""
-              fill
-              priority
-              sizes="(min-width: 1440px) 1360px, 100vw"
-              className="object-cover"
-            />
+            {bannerUrl ? (
+              <Image
+                src={bannerUrl}
+                alt={`${vendor.name} banner`}
+                fill
+                priority
+                sizes="(min-width: 1440px) 1360px, 100vw"
+                className="object-cover"
+              />
+            ) : (
+              // No banner uploaded: a neutral backdrop, not a stock photo
+              // that reads as this vendor's own (it used to be a plate of
+              // food on every profile, whatever the business).
+              <div
+                aria-hidden
+                className="from-primary/35 via-primary/15 to-background absolute inset-0 bg-linear-to-br"
+              />
+            )}
           </div>
 
           <motion.div

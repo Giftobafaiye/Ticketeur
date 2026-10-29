@@ -20,6 +20,7 @@ import {
 } from '@hugeicons/core-free-icons'
 
 import { MarkdownView } from '@ticketur/ui/components/markdown-view'
+import { normalizeWebUrl } from '@ticketur/api/lib/web-url'
 
 import type { VendorRecord } from '@/lib/vendors'
 
@@ -269,6 +270,10 @@ function ContactRow({
   label: string
   href?: string
 }) {
+  // Only http(s) links become clickable, and a stored "facebook.com/x" (from
+  // before links were normalised on save) is made absolute — as a bare path it
+  // pointed back into this site and went nowhere.
+  const safeHref = normalizeWebUrl(href) ?? undefined
   const content = (
     <>
       <HugeiconsIcon
@@ -281,9 +286,9 @@ function ContactRow({
   )
   return (
     <li className="text-foreground flex items-center gap-2.5 text-sm">
-      {href ? (
+      {safeHref ? (
         <a
-          href={href}
+          href={safeHref}
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-primary flex min-w-0 items-center gap-2.5 transition-colors"
