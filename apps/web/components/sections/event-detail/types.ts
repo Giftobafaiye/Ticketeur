@@ -17,5 +17,8 @@ export type EventDetailData = {
   description: string[]
   features: EventFeature[]
   price: string
-  buyHref?: string
+  // Finished: the page is a glimpse of what was hosted, with nothing to buy.
+  ended: boolean
+  // Every ticket tier is gone.
+  soldOut: boolean
 }
