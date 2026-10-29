@@ -18,6 +18,7 @@ import { generateUniqueEventSlug } from '../lib/slug'
 import { logActivity } from '../lib/activity'
 import { deliverExternalVendorInvites } from '../lib/vendor-invites'
 import { applyEventEdit, assertEventEditAllowed } from '../lib/events'
+import { EVENT_CATEGORIES } from '../lib/event-categories'
 
 // ─── Creating an event: the status it starts in ────────────────────────────
 //
@@ -81,6 +82,7 @@ const createEventInput = z.object({
   endDate: z.string().nullable().optional(),
   time: z.string().min(1),
   location: z.string().trim().min(1),
+  category: z.enum(EVENT_CATEGORIES).nullable().optional(),
   bannerUrl: z.string().nullable().optional(),
   features: z.array(z.string().trim()).default([]),
   tiers: z.array(ticketTierInput).min(1),
@@ -112,6 +114,7 @@ const updateEventInput = z
     endDate: z.string().nullable().optional(),
     time: z.string().min(1),
     location: z.string().trim().min(1),
+    category: z.enum(EVENT_CATEGORIES).nullable().optional(),
     bannerUrl: z.string().nullable().optional(),
     features: z.array(z.string().trim()).default([]),
     tiers: z.array(updateTicketTierInput).min(1),
@@ -176,6 +179,7 @@ export const eventsRouter = createTRPCRouter({
               : null,
           eventTime: input.time,
           location: input.location,
+          category: input.category ?? null,
           bannerUrl: input.bannerUrl ?? null,
           features: input.features,
           status,
@@ -293,6 +297,7 @@ export const eventsRouter = createTRPCRouter({
         endDate: input.endDate ?? null,
         time: input.time,
         location: input.location,
+        category: input.category,
         bannerUrl: input.bannerUrl ?? null,
         features: input.features,
         tiers: input.tiers,

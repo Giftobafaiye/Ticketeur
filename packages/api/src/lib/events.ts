@@ -95,6 +95,9 @@ export async function applyEventEdit(
           : null,
       eventTime: payload.time,
       location: payload.location,
+      // An edit that doesn't carry a category (queued before they existed, or
+      // a caller that omits it) leaves the event's category alone.
+      ...(payload.category !== undefined && { category: payload.category }),
       bannerUrl: payload.bannerUrl ?? null,
       features: payload.features,
       updatedAt: new Date(),

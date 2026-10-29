@@ -30,6 +30,8 @@ export type EventPendingChanges = {
   endDate?: string | null
   time: string
   location: string
+  // Absent on edits queued before events had a category: leave it as it is.
+  category?: string | null
   bannerUrl?: string | null
   features: string[]
   tiers: { id?: string; name: string; quantity: number; priceMinor: number }[]
@@ -56,6 +58,9 @@ export const events = pgTable(
     endDate: text('end_date'),
     eventTime: text('event_time').notNull(),
     location: text('location').notNull(),
+    // One of EVENT_CATEGORIES (packages/api/src/lib/event-categories.ts).
+    // Null for events created before categories existed.
+    category: text('category'),
     bannerUrl: text('banner_url'),
     features: jsonb('features').$type<string[]>().notNull().default([]),
     status: text('status').$type<EventStatus>().notNull().default('draft'),

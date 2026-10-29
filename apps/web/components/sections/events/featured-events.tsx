@@ -5,7 +5,33 @@ import { motion } from 'motion/react'
 
 import { FeaturedEventCard } from '@/components/cards/featured-event-card'
 import { useTRPC } from '@/lib/trpc'
-import { formatNaira } from '@/lib/event-display'
+import {
+  EVENT_CARD_STATUS_LABEL,
+  eventCardStatus,
+  formatNaira,
+} from '@/lib/event-display'
+import type { BadgeTone } from '@/components/cards/featured-event-card'
+
+const STATUS_TONE = {
+  past: 'gray',
+  'sold-out': 'amber',
+  live: 'purple',
+  upcoming: 'green',
+} as const satisfies Record<string, BadgeTone>
+
+function statusBadge(event: {
+  eventDate: string | null
+  endDate: string | null
+  soldOut: boolean
+  category: string | null
+}) {
+  const status = eventCardStatus(event)
+  const label = EVENT_CARD_STATUS_LABEL[status]
+  return {
+    label: event.category ? `${label} · ${event.category}` : label,
+    tone: STATUS_TONE[status],
+  }
+}
 
 const EVENT_PLACEHOLDER = '/hero-bg.png'
 
@@ -55,6 +81,7 @@ export function FeaturedEvents() {
               >
                 <FeaturedEventCard
                   id={event.id}
+                  badge={statusBadge(event)}
                   title={event.title}
                   price={
                     event.minPrice > 0
