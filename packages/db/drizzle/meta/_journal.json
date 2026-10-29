@@ -197,6 +197,13 @@
       "when": 1793289975288,
       "tag": "0027_vendor_invite_sent_at",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1793290100279,
+      "tag": "0028_admins_require_two_factor",
+      "breakpoints": true
     }
   ]
 }

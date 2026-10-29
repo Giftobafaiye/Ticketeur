@@ -119,6 +119,21 @@ export function createAuth(cookiePrefix: string) {
             })
           },
         },
+        update: {
+          // Two-factor sign-in is not optional for admins. Granting the role
+          // turns it on, and an admin cannot switch it off for themselves.
+          // The admin app's proxy refuses an admin session without it, so a
+          // write that bypasses this hook (a direct DB update) locks the
+          // account out of the console rather than letting it in unguarded.
+          before: async (data, ctx) => {
+            const adminDisablingOwn2fa =
+              ctx?.path === '/two-factor/disable' &&
+              ctx.context.session?.user.role === 'admin'
+            if (data.role === 'admin' || adminDisablingOwn2fa) {
+              return { data: { ...data, twoFactorEnabled: true } }
+            }
+          },
+        },
       },
     },
 
