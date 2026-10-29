@@ -328,7 +328,8 @@ export function SignupForm({
                 <span className="block">
                   I agree to the{' '}
                   <Link
-                    href="/terms"
+                    href="/terms/full"
+                    target="_blank"
                     className="text-primary font-medium hover:underline"
                   >
                     Terms of Service
