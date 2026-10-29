@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default async function MyApplicationsPage() {
   const session = await getSession()
   if (!session) {
-    redirect('/login?redirect=/account/applications')
+    redirect('/login?next=/account/applications')
   }
   const { trpc, queryClient } = await getServerTRPC()
   await queryClient.prefetchQuery(trpc.account.submissions.list.queryOptions())

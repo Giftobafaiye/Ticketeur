@@ -25,6 +25,12 @@ export const user = pgTable('user', {
   banExpires: timestamp('ban_expires'),
   // two-factor plugin
   twoFactorEnabled: boolean('two_factor_enabled'),
+  // Consent to marketing email and newsletters. Off unless the person ticks
+  // it (at sign-up, or later in account settings); transactional mail —
+  // tickets, receipts, codes — is sent regardless. marketingConsentAt is when
+  // it was last changed, the record of when consent was given or withdrawn.
+  marketingOptIn: boolean('marketing_opt_in').notNull().default(false),
+  marketingConsentAt: timestamp('marketing_consent_at'),
   // role requested at signup — gets copied to `role` by a databaseHook
   // after validation. See packages/auth/src/server.ts.
   requestedRole: text('requested_role'),

@@ -218,6 +218,13 @@
       "when": 1793291701711,
       "tag": "0030_event_category",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793292471522,
+      "tag": "0031_marketing_consent",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
-export { createAuth } from './server'
-export type { Auth, Session } from './server'
+export { createAuth, enabledSocialProviders } from './server'
+export type { Auth, Session, SocialProviderId } from './server'
 export { createClient } from './client'
 export type { AuthClient } from './client'
 export { createGuards } from './guards'

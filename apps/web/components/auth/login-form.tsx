@@ -22,6 +22,8 @@ import {
 
 import { authClient } from '@/lib/auth-client'
 import { withNext } from '@/lib/post-login-redirect'
+import type { SocialProviderId } from '@ticketur/auth'
+
 import { SocialAuthButtons } from '@/components/auth/social-auth-buttons'
 
 const loginSchema = z.object({
@@ -34,7 +36,13 @@ type LoginValues = z.infer<typeof loginSchema>
 // `next` is where the person was headed before sign-in interrupted them (a
 // registration form they were filling in, say). It rides along to /post-login,
 // and through 2FA when that is in the way.
-export function LoginForm({ next }: { next?: string | null }) {
+export function LoginForm({
+  next,
+  socialProviders,
+}: {
+  next?: string | null
+  socialProviders: SocialProviderId[]
+}) {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -164,9 +172,12 @@ export function LoginForm({ next }: { next?: string | null }) {
         {isPending ? 'Signing in…' : 'Sign In'}
       </Button>
 
-      <FieldSeparator>or</FieldSeparator>
-
-      <SocialAuthButtons next={next} />
+      {socialProviders.length > 0 ? (
+        <>
+          <FieldSeparator>or</FieldSeparator>
+          <SocialAuthButtons next={next} providers={socialProviders} />
+        </>
+      ) : null}
     </form>
   )
 }

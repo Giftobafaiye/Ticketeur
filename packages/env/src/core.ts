@@ -27,6 +27,15 @@ export const env = createEnv({
       .transform((val) => val.split(',').map((url) => url.trim())),
     GOOGLE_CLIENT_ID: z.string().optional().default(''),
     GOOGLE_CLIENT_SECRET: z.string().optional().default(''),
+    // Sign in with Apple: the Services ID and the client-secret JWT signed
+    // with the Sign in with Apple key (Apple Developer account). Both unset =
+    // the button is not shown.
+    APPLE_CLIENT_ID: z.string().optional().default(''),
+    APPLE_CLIENT_SECRET: z.string().optional().default(''),
+    // Facebook Login (Meta app). Stands in for Instagram, which Meta no longer
+    // offers as a sign-in provider. Both unset = the button is not shown.
+    FACEBOOK_CLIENT_ID: z.string().optional().default(''),
+    FACEBOOK_CLIENT_SECRET: z.string().optional().default(''),
     RESEND_API_KEY: z.string().min(1),
     // The Trigger.dev worker environment receives Trigger's own TRIGGER_PROJECT_REF
     // rather than this project id (packages/jobs/trigger.config.ts resolves the ref
