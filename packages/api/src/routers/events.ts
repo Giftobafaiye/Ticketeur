@@ -1,6 +1,5 @@
 import { TRPCError } from '@trpc/server'
 import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
-import { tasks } from '@trigger.dev/sdk'
 import { z } from 'zod'
 
 import {
@@ -17,7 +16,7 @@ import { createTRPCRouter, organizerProcedure } from '../trpc'
 import { newId } from '../lib/ids'
 import { generateUniqueEventSlug } from '../lib/slug'
 import { logActivity } from '../lib/activity'
-import { getBaseUrl } from '../lib/base-url'
+import { deliverExternalVendorInvites } from '../lib/vendor-invites'
 import { applyEventEdit, assertEventEditAllowed } from '../lib/events'
 
 // ─── Creating an event: the status it starts in ────────────────────────────
@@ -220,106 +219,30 @@ export const eventsRouter = createTRPCRouter({
         }
 
         if (input.externalInvites.length > 0) {
-          // For each external invite: ensure a vendor user account exists
-          // (creating a pending one if needed), then link via eventVendors.
-          // We still record the original invite payload (incl. phone) in
-          // externalVendorInvites so the organizer can see who they invited.
+          // Recorded only. No account is touched and nothing is emailed until
+          // the event is approved — see deliverExternalVendorInvites.
           await tx.insert(externalVendorInvites).values(
             input.externalInvites.map((inv) => ({
               id: newId('einv'),
               eventId,
               businessName: inv.businessName,
               contactName: inv.contactName,
-              email: inv.email,
+              email: inv.email.toLowerCase(),
               phone: inv.phone,
             }))
           )
-
-          for (const inv of input.externalInvites) {
-            const existing = await tx
-              .select({
-                id: user.id,
-                role: user.role,
-                vendorApprovalStatus: user.vendorApprovalStatus,
-              })
-              .from(user)
-              .where(eq(user.email, inv.email))
-              .limit(1)
-
-            let vendorId: string
-
-            if (existing[0]) {
-              vendorId = existing[0].id
-              // Promote existing accounts to vendor (still pending) if they
-              // weren't a vendor yet. Don't downgrade approved vendors.
-              if (existing[0].role !== 'vendor') {
-                await tx
-                  .update(user)
-                  .set({
-                    role: 'vendor',
-                    vendorApprovalStatus: 'pending',
-                    businessName: inv.businessName,
-                  })
-                  .where(eq(user.id, vendorId))
-              }
-            } else {
-              // Stub vendor account; they'll set a password via the
-              // forgot-password / sign-up flow we send in the invite email.
-              vendorId = newId('usr')
-              const now = new Date()
-              await tx.insert(user).values({
-                id: vendorId,
-                name: inv.contactName,
-                email: inv.email,
-                emailVerified: false,
-                role: 'vendor',
-                vendorApprovalStatus: 'pending',
-                businessName: inv.businessName,
-                createdAt: now,
-                updatedAt: now,
-              })
-            }
-
-            // Link to this event (idempotent: skip if already linked).
-            const alreadyLinked = await tx
-              .select({ id: eventVendors.id })
-              .from(eventVendors)
-              .where(
-                and(
-                  eq(eventVendors.eventId, eventId),
-                  eq(eventVendors.vendorId, vendorId)
-                )
-              )
-              .limit(1)
-
-            if (!alreadyLinked[0]) {
-              await tx.insert(eventVendors).values({
-                id: newId('evnd'),
-                eventId,
-                vendorId,
-                status: 'invited',
-              })
-            }
-          }
         }
       })
 
-      // Fire invite emails outside the transaction. Failures here must not
-      // roll back the event creation — the organizer can resend invites later.
-      if (input.externalInvites.length > 0) {
-        const baseUrl = getBaseUrl()
-
-        for (const inv of input.externalInvites) {
-          const signupUrl = `${baseUrl}/signup?role=vendor&invite=vendor&email=${encodeURIComponent(inv.email)}`
-          void tasks.trigger('send-vendor-invite', {
-            email: inv.email,
-            businessName: inv.businessName,
-            contactName: inv.contactName,
-            organizerName: ctx.session.user.name,
-            eventTitle: input.title,
-            signupUrl,
+      // An admin creating the event live is the approval, so the invites go
+      // out now. Failures here must not undo the event creation.
+      if (status === 'upcoming' && input.externalInvites.length > 0) {
+        await deliverExternalVendorInvites(ctx.db, eventId).catch((error) => {
+          console.error('[events] vendor invites failed to send', {
+            eventId,
+            error,
           })
-        }
+        })
       }
 
       await logActivity(ctx, {

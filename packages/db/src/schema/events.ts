@@ -176,6 +176,9 @@ export const externalVendorInvites = pgTable(
       .$type<ExternalVendorInviteStatus>()
       .notNull()
       .default('invited'),
+    // When the invite email went out (and the vendor was linked). Null until
+    // an admin approves the event; see deliverExternalVendorInvites.
+    sentAt: timestamp('sent_at'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (t) => [index('external_vendor_invites_event_idx').on(t.eventId)]

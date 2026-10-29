@@ -28,6 +28,7 @@ import {
 } from '@ticketur/db'
 
 import { adminProcedure, createTRPCRouter } from '../../trpc'
+import { deliverExternalVendorInvites } from '../../lib/vendor-invites'
 import { formatEventDateRange } from '../../lib/dates'
 import { applyEventEdit } from '../../lib/events'
 import { logActivity } from '../../lib/activity'
@@ -783,6 +784,15 @@ export const adminModerationRouter = createTRPCRouter({
         .update(events)
         .set({ status: 'upcoming', updatedAt: new Date() })
         .where(eq(events.id, ev.id))
+
+      // Vendor invites recorded at creation are only sent once an admin has
+      // looked at the event. Never fails the approval itself.
+      await deliverExternalVendorInvites(ctx.db, ev.id).catch((error) => {
+        console.error('[moderation] vendor invites failed to send', {
+          eventId: ev.id,
+          error,
+        })
+      })
 
       if (organizer) {
         void tasks.trigger('send-event-approved', {
