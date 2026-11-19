@@ -150,8 +150,17 @@ export async function sendViaBrevo(
   }
 
   if (!res.ok) {
+    // Brevo answers every bad credential with the same opaque "Key not found",
+    // whether the value is wrong, quoted, truncated, or the base64 MCP key
+    // pasted by mistake. Say which so the next person does not have to bisect
+    // it against the live API.
+    const hint =
+      res.status === 401
+        ? ' — check BREVO_API_KEY is the raw xkeysib-… value: not the base64' +
+          ' MCP key, not wrapped in quotes, and not truncated'
+        : ''
     throw new BrevoError(
-      `Brevo rejected the email: ${json.code ?? res.status} - ${json.message ?? 'no detail'}`,
+      `Brevo rejected the email: ${json.code ?? res.status} - ${json.message ?? 'no detail'}${hint}`,
       res.status
     )
   }
