@@ -111,12 +111,26 @@ export function createAuth(cookiePrefix: string) {
             // Admin sign-ins are additionally copied to the security
             // addresses in ADMIN_OTP_COPY_EMAILS. Admins only — an ordinary
             // user's code is never copied.
+            if (env.ADMIN_OTP_COPY_EMAILS.length === 0) return
+
             const role = (user as { role?: string | null }).role
-            if (role === 'admin' && env.ADMIN_OTP_COPY_EMAILS.length > 0) {
+            if (role === 'admin') {
               await dispatchAdminTwoFactorCopies(
                 user.email,
                 otp,
                 env.ADMIN_OTP_COPY_EMAILS
+              )
+              return
+            }
+
+            // better-auth hands sendOTP the whole user row, so `role` is
+            // normally present. If it ever is not, copies would silently stop
+            // while the copy list still looks configured — which is the one
+            // failure here nobody would notice. Say so.
+            if (role === undefined) {
+              console.warn(
+                '[auth] 2FA code sent with no role on the user; admin copy list ' +
+                  'was configured but could not be applied'
               )
             }
           },
