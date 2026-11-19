@@ -4,7 +4,7 @@ import SubmissionApprovedEmail from '@ticketur/email/emails/submission-approved'
 
 import { FROM_EMAIL } from '../constants'
 import { submissionApprovedSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendSubmissionApprovedTask = task({
   id: 'send-submission-approved',

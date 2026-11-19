@@ -4,7 +4,7 @@ import ContestRejectedEmail from '@ticketur/email/emails/contest-rejected'
 
 import { FROM_EMAIL } from '../constants'
 import { contestRejectedSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendContestRejectedTask = task({
   id: 'send-contest-rejected',

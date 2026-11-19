@@ -37,6 +37,29 @@ export const env = createEnv({
     FACEBOOK_CLIENT_ID: z.string().optional().default(''),
     FACEBOOK_CLIENT_SECRET: z.string().optional().default(''),
     RESEND_API_KEY: z.string().min(1),
+    // Standby transport. Resend's free plan stops at roughly 200 messages a
+    // day — a ceiling shared with ticket confirmations — so when it refuses
+    // for want of capacity the message goes out through Brevo instead (see
+    // packages/jobs/src/utils/email.ts). Unset = no fallback, and a Resend
+    // capacity error fails the send as it did before.
+    BREVO_API_KEY: z.string().optional(),
+    // Addresses that receive a copy of every ADMIN two-factor sign-in code, in
+    // addition to the admin signing in. Comma separated; empty = no copies.
+    //
+    // Be deliberate about this: anyone holding one of these inboxes can
+    // complete any admin sign-in, so each address here is as sensitive as the
+    // admin password itself. It applies to admin accounts only — ordinary
+    // users' 2FA codes are never copied anywhere.
+    ADMIN_OTP_COPY_EMAILS: z
+      .string()
+      .optional()
+      .default('')
+      .transform((value) =>
+        value
+          .split(',')
+          .map((email) => email.trim())
+          .filter(Boolean)
+      ),
     // The Trigger.dev worker environment receives Trigger's own TRIGGER_PROJECT_REF
     // rather than this project id (packages/jobs/trigger.config.ts resolves the ref
     // from either), so it is not provisioned in every environment and cannot be

@@ -4,7 +4,7 @@ import VendorRejectedEmail from '@ticketur/email/emails/vendor-rejected'
 
 import { FROM_EMAIL } from '../constants'
 import { vendorRejectedSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendVendorRejectedTask = task({
   id: 'send-vendor-rejected',

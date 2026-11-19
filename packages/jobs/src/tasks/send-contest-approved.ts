@@ -4,7 +4,7 @@ import ContestApprovedEmail from '@ticketur/email/emails/contest-approved'
 
 import { FROM_EMAIL } from '../constants'
 import { contestApprovedSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendContestApprovedTask = task({
   id: 'send-contest-approved',

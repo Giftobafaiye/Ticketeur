@@ -4,7 +4,7 @@ import AccountSuspendedEmail from '@ticketur/email/emails/account-suspended'
 
 import { FROM_EMAIL } from '../constants'
 import { accountSuspendedSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendAccountSuspendedTask = task({
   id: 'send-account-suspended',

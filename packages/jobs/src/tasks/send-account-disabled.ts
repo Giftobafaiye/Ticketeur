@@ -4,7 +4,7 @@ import AccountDisabledEmail from '@ticketur/email/emails/account-disabled'
 
 import { FROM_EMAIL } from '../constants'
 import { accountDisabledSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendAccountDisabledTask = task({
   id: 'send-account-disabled',

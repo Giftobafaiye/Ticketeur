@@ -4,7 +4,7 @@ import AccountReactivatedEmail from '@ticketur/email/emails/account-reactivated'
 
 import { FROM_EMAIL } from '../constants'
 import { accountReactivatedSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendAccountReactivatedTask = task({
   id: 'send-account-reactivated',

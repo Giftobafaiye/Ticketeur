@@ -4,7 +4,7 @@ import AccountRemovedEmail from '@ticketur/email/emails/account-removed'
 
 import { FROM_EMAIL } from '../constants'
 import { accountRemovedSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendAccountRemovedTask = task({
   id: 'send-account-removed',

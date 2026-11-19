@@ -4,7 +4,7 @@ import VoteCodeEmail from '@ticketur/email/emails/vote-code'
 
 import { FROM_EMAIL } from '../constants'
 import { voteCodeSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendVoteCodeTask = task({
   id: 'send-vote-code',

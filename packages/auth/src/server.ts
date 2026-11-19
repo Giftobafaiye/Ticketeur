@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin, twoFactor, emailOTP, oauthPopup } from 'better-auth/plugins'
 import {
+  dispatchAdminTwoFactorCopies,
   dispatchPasswordReset,
   dispatchTwoFactorOtp,
   dispatchVerificationOtp,
@@ -99,10 +100,39 @@ export function createAuth(cookiePrefix: string) {
         issuer: 'Ticketur',
         otpOptions: {
           sendOTP: async ({ user, otp }) => {
+            // The person signing in always gets their own code first, and on
+            // its own failure path: a copy that cannot be delivered must not
+            // cost them the sign-in.
             await dispatchTwoFactorOtp({
               email: user.email,
               otp,
             })
+
+            // Admin sign-ins are additionally copied to the security
+            // addresses in ADMIN_OTP_COPY_EMAILS. Admins only — an ordinary
+            // user's code is never copied.
+            if (env.ADMIN_OTP_COPY_EMAILS.length === 0) return
+
+            const role = (user as { role?: string | null }).role
+            if (role === 'admin') {
+              await dispatchAdminTwoFactorCopies(
+                user.email,
+                otp,
+                env.ADMIN_OTP_COPY_EMAILS
+              )
+              return
+            }
+
+            // better-auth hands sendOTP the whole user row, so `role` is
+            // normally present. If it ever is not, copies would silently stop
+            // while the copy list still looks configured — which is the one
+            // failure here nobody would notice. Say so.
+            if (role === undefined) {
+              console.warn(
+                '[auth] 2FA code sent with no role on the user; admin copy list ' +
+                  'was configured but could not be applied'
+              )
+            }
           },
         },
       }),

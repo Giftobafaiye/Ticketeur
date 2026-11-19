@@ -4,11 +4,11 @@ import VoucherCodeEmail from '@ticketur/email/emails/voucher-code'
 
 import { FROM_EMAIL } from '../constants'
 import { voucherCodeSchema } from '../schema'
-import { resend } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendVoucherCodeTask = task({
   id: 'send-voucher-code',
-  run: async (payload: unknown) => {
+  run: async (payload: unknown, { ctx }) => {
     const data = voucherCodeSchema.parse(payload)
 
     // The body is identical for every recipient, so render once.
@@ -30,15 +30,20 @@ export const sendVoucherCodeTask = task({
     // the batch, and Trigger's retry would otherwise re-send to everyone who
     // already received it.
     const failed: string[] = []
+    const byProvider: Record<string, number> = {}
     for (const email of data.emails) {
-      const { error } = await resend.emails.send({
-        from: FROM_EMAIL,
-        to: email,
-        subject,
-        html,
-      })
-      if (error) {
-        console.error(`voucher email failed for ${email}: ${error.message}`)
+      try {
+        // Keyed per recipient so a Trigger retry re-sends to nobody who
+        // already received it, and so a batch that exhausts Resend's daily
+        // quota part-way simply continues on Brevo.
+        const { provider } = await sendEmail(
+          { from: FROM_EMAIL, to: email, subject, html },
+          `${ctx.run.id}:${email}`
+        )
+        byProvider[provider] = (byProvider[provider] ?? 0) + 1
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error)
+        console.error(`voucher email failed for ${email}: ${detail}`)
         failed.push(email)
       }
     }
@@ -46,6 +51,7 @@ export const sendVoucherCodeTask = task({
     return {
       requested: data.emails.length,
       sent: data.emails.length - failed.length,
+      byProvider,
       failed,
     }
   },

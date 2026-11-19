@@ -4,7 +4,7 @@ import FormTakenDownEmail from '@ticketur/email/emails/form-taken-down'
 
 import { FROM_EMAIL } from '../constants'
 import { formTakenDownSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendFormTakenDownTask = task({
   id: 'send-form-taken-down',
