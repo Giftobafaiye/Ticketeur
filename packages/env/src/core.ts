@@ -42,7 +42,14 @@ export const env = createEnv({
     // for want of capacity the message goes out through Brevo instead (see
     // packages/jobs/src/utils/email.ts). Unset = no fallback, and a Resend
     // capacity error fails the send as it did before.
-    BREVO_API_KEY: z.string().optional(),
+    // Trimmed, and surrounding quotes stripped: pasting `BREVO_API_KEY="xks…"`
+    // straight out of a .env file into a dashboard field is an easy slip, and
+    // Brevo answers a quoted key with the same opaque "Key not found" it gives
+    // a wrong one — which cost a live evening of email to diagnose once.
+    BREVO_API_KEY: z
+      .string()
+      .optional()
+      .transform((value) => value?.trim().replace(/^["']|["']$/g, '')),
     // Addresses that receive a copy of every ADMIN two-factor sign-in code, in
     // addition to the admin signing in. Comma separated; empty = no copies.
     //
