@@ -11,7 +11,7 @@ import {
   verificationOtpSchema,
   welcomeEmailSchema,
 } from './schema'
-import { sendEmail } from './utils/resend'
+import { sendEmail } from './utils/email'
 
 // Shared by the Trigger.dev tasks and by the apps' degraded-mode fallback, so
 // the two paths render and send exactly the same message.
@@ -59,8 +59,17 @@ export async function sendTwoFactorOtpEmail(
   idempotencyKey: string
 ) {
   const data = twoFactorOtpSchema.parse(payload)
-  const html = await render(TwoFactorOTPEmail({ otp: data.otp }))
-  await send(data.email, 'Your Ticketur 2FA code', html, idempotencyKey)
+  const html = await render(
+    TwoFactorOTPEmail({ otp: data.otp, account: data.account })
+  )
+  await send(
+    data.email,
+    data.account
+      ? `Admin sign-in code for ${data.account}`
+      : 'Your Ticketur 2FA code',
+    html,
+    idempotencyKey
+  )
 }
 
 export async function sendPasswordResetEmail(

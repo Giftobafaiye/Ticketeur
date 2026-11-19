@@ -4,7 +4,7 @@ import VendorInviteEmail from '@ticketur/email/emails/vendor-invite'
 
 import { FROM_EMAIL } from '../constants'
 import { vendorInviteSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendVendorInviteTask = task({
   id: 'send-vendor-invite',

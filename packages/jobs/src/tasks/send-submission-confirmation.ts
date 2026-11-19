@@ -4,7 +4,7 @@ import SubmissionConfirmationEmail from '@ticketur/email/emails/submission-confi
 
 import { FROM_EMAIL } from '../constants'
 import { submissionConfirmationSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendSubmissionConfirmationTask = task({
   id: 'send-submission-confirmation',

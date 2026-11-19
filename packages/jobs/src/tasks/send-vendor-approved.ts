@@ -4,7 +4,7 @@ import VendorApprovedEmail from '@ticketur/email/emails/vendor-approved'
 
 import { FROM_EMAIL } from '../constants'
 import { vendorApprovedSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendVendorApprovedTask = task({
   id: 'send-vendor-approved',

@@ -4,7 +4,7 @@ import AdminBroadcastEmail from '@ticketur/email/emails/admin-broadcast'
 
 import { FROM_EMAIL } from '../constants'
 import { adminBroadcastSchema } from '../schema'
-import { resend } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 // What an admin types in the composer to address the person by name.
 // "Dear {{name}}," becomes "Dear Ada," for Ada Obi.
@@ -22,7 +22,7 @@ function greetingFor(name: string, fallback: string): string {
 
 export const sendAdminBroadcastTask = task({
   id: 'send-admin-broadcast',
-  run: async (payload: unknown) => {
+  run: async (payload: unknown, { ctx }) => {
     const data = adminBroadcastSchema.parse(payload)
 
     // Only re-render per person when the message actually says their name.
@@ -41,6 +41,7 @@ export const sendAdminBroadcastTask = task({
     // one bad email must not cost the rest of the batch, and a Trigger retry
     // would otherwise re-send to everyone who already received it.
     const failed: string[] = []
+    const byProvider: Record<string, number> = {}
     for (const recipient of data.recipients) {
       const html =
         sharedHtml ??
@@ -54,16 +55,23 @@ export const sendAdminBroadcastTask = task({
           })
         ))
 
-      const { error } = await resend.emails.send({
-        from: FROM_EMAIL,
-        to: recipient.email,
-        subject: data.subject,
-        html,
-      })
-      if (error) {
-        console.error(
-          `admin broadcast failed for ${recipient.email}: ${error.message}`
+      try {
+        // Keyed per recipient so a Trigger retry of this run re-sends to
+        // nobody who already received it, and so a batch that exhausts
+        // Resend's daily quota part-way simply continues on Brevo.
+        const { provider } = await sendEmail(
+          {
+            from: FROM_EMAIL,
+            to: recipient.email,
+            subject: data.subject,
+            html,
+          },
+          `${ctx.run.id}:${recipient.email}`
         )
+        byProvider[provider] = (byProvider[provider] ?? 0) + 1
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error)
+        console.error(`admin broadcast failed for ${recipient.email}: ${detail}`)
         failed.push(recipient.email)
       }
     }
@@ -71,6 +79,7 @@ export const sendAdminBroadcastTask = task({
     return {
       requested: data.recipients.length,
       sent: data.recipients.length - failed.length,
+      byProvider,
       failed,
     }
   },

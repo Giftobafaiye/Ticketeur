@@ -4,7 +4,7 @@ import NominationCodeEmail from '@ticketur/email/emails/nomination-code'
 
 import { FROM_EMAIL } from '../constants'
 import { nominationCodeSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendNominationCodeTask = task({
   id: 'send-nomination-code',

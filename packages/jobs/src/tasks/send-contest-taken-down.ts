@@ -4,7 +4,7 @@ import ContestTakenDownEmail from '@ticketur/email/emails/contest-taken-down'
 
 import { FROM_EMAIL } from '../constants'
 import { contestTakenDownSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendContestTakenDownTask = task({
   id: 'send-contest-taken-down',

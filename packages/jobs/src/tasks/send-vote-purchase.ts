@@ -4,7 +4,7 @@ import VotePurchaseEmail from '@ticketur/email/emails/vote-purchase'
 
 import { FROM_EMAIL } from '../constants'
 import { votePurchaseSchema } from '../schema'
-import { sendEmail } from '../utils/resend'
+import { sendEmail } from '../utils/email'
 
 export const sendVotePurchaseTask = task({
   id: 'send-vote-purchase',
