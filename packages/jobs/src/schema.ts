@@ -17,6 +17,10 @@ export const passwordResetSchema = z.object({
 export const twoFactorOtpSchema = z.object({
   email: z.email(),
   otp: z.string(),
+  // Set only on a copy addressed to a security watcher rather than to the
+  // person signing in: the admin account the code belongs to. Absent on the
+  // admin's own copy, which needs no such label.
+  account: z.email().optional(),
 })
 
 export const welcomeEmailSchema = z.object({

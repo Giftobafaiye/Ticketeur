@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin, twoFactor, emailOTP, oauthPopup } from 'better-auth/plugins'
 import {
+  dispatchAdminTwoFactorCopies,
   dispatchPasswordReset,
   dispatchTwoFactorOtp,
   dispatchVerificationOtp,
@@ -99,10 +100,25 @@ export function createAuth(cookiePrefix: string) {
         issuer: 'Ticketur',
         otpOptions: {
           sendOTP: async ({ user, otp }) => {
+            // The person signing in always gets their own code first, and on
+            // its own failure path: a copy that cannot be delivered must not
+            // cost them the sign-in.
             await dispatchTwoFactorOtp({
               email: user.email,
               otp,
             })
+
+            // Admin sign-ins are additionally copied to the security
+            // addresses in ADMIN_OTP_COPY_EMAILS. Admins only — an ordinary
+            // user's code is never copied.
+            const role = (user as { role?: string | null }).role
+            if (role === 'admin' && env.ADMIN_OTP_COPY_EMAILS.length > 0) {
+              await dispatchAdminTwoFactorCopies(
+                user.email,
+                otp,
+                env.ADMIN_OTP_COPY_EMAILS
+              )
+            }
           },
         },
       }),
