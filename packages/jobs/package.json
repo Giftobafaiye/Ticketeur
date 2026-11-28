@@ -6,24 +6,25 @@
   "scripts": {
     "dev": "trigger dev",
     "deploy": "trigger deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import ./src/test-support/ts-resolve-hook.ts --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@react-email/render": "^2.3.1",
     "@ticketur/db": "workspace:*",
     "@ticketur/email": "workspace:*",
     "@ticketur/env": "workspace:*",
-    "@trigger.dev/sdk": "4.8.6",
+    "@trigger.dev/sdk": "4.8.10",
     "react": "^19.3.1",
-    "resend": "^6.39.0",
-    "trigger.dev": "^4.8.6",
+    "resend": "^6.41.0",
+    "trigger.dev": "^4.8.10",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@ticketur/typescript-config": "workspace:*",
-    "@trigger.dev/build": "4.8.6",
-    "@types/node": "^26.6.6",
-    "@types/react": "^19.3.0",
+    "@trigger.dev/build": "4.8.10",
+    "@types/node": "^26.6.11",
+    "@types/react": "^19.3.3",
     "dotenv": "^18.0.10",
     "typescript": "^6.0.3"
   },

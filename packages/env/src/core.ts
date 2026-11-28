@@ -77,6 +77,15 @@ export const env = createEnv({
     FLW_PUBLIC_KEY: z.string().optional(),
     FLW_SECRET_KEY: z.string().optional(),
     FLW_SECRET_HASH: z.string().optional(),
+    // How far organizer payouts are switched on (packages/db/src/payouts):
+    //   off     balances are shown, nobody can ask to withdraw (the default)
+    //   manual  organizers request, an admin approves and pays by hand in the
+    //           Flutterwave dashboard, then records it
+    //   live    approving sends the transfer from the Trigger.dev worker,
+    //           which also needs FLW_SECRET_KEY and a whitelisted static IP
+    // Set the same value on both Vercel projects and on Trigger.dev. An
+    // unrecognised value fails the deploy rather than quietly meaning "off".
+    PAYOUTS_MODE: z.enum(['off', 'manual', 'live']).default('off'),
     // Shared by the web app and the Trigger.dev worker: the worker's scheduled
     // `reconcile-pending-orders` task sends it as a bearer token to the web
     // app's /api/cron/reconcile-orders. The route enforces a minimum length

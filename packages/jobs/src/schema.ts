@@ -384,3 +384,54 @@ export const contestTakenDownSchema = z.object({
   manageUrl: z.url(),
 })
 export type ContestTakenDownPayload = z.infer<typeof contestTakenDownSchema>
+
+// ─── Organizer payouts ─────────────────────────────────────────────────────
+// (packages/api/src/lib/payout-emails.ts, and the transfer job here.)
+
+// The code an organizer types to add a bank account or to ask for a
+// withdrawal. The plaintext travels in this payload for the same reason the
+// vote code's does: `payout_codes` holds only a digest.
+export const payoutCodeSchema = z.object({
+  email: z.email(),
+  code: z.string().regex(/^\d{6}$/),
+  purpose: z.enum(['add_account', 'request_payout']),
+  // What the code authorises, in words: "Access Bank ••••0031 (ADA OBI)" or
+  // "₦50,000 to Access Bank ••••0031". Shown so someone who did not ask for
+  // the code can see exactly what it would have done.
+  detail: z.string().min(1),
+  expiresInMinutes: z.number().int().min(1).default(10),
+})
+export type PayoutCodePayload = z.infer<typeof payoutCodeSchema>
+
+// One shape for every payout notice; `kind` decides the wording.
+export const payoutUpdateSchema = z.object({
+  email: z.email(),
+  kind: z.enum([
+    // To the organizer
+    'account_changed',
+    'requested',
+    'approved',
+    'paid',
+    'rejected',
+    'failed',
+    // To each admin
+    'admin_new_request',
+  ]),
+  recipientName: z.string(),
+  // "₦50,000"; absent for account_changed.
+  amount: z.string().optional(),
+  // "Access Bank ••••0031 (ADA OBI)"
+  account: z.string(),
+  // The organizer, for admin_new_request.
+  organizerName: z.string().optional(),
+  // Rejection reason, or what went wrong with a transfer.
+  reason: z.string().optional(),
+  // The Flutterwave or manual reference of a payment.
+  reference: z.string().optional(),
+  // For account_changed: when the new account can first receive money.
+  usableFrom: z.string().optional(),
+  // Where the organizer manages payouts. Absent for admins, whose console
+  // address this codebase does not know.
+  url: z.url().optional(),
+})
+export type PayoutUpdatePayload = z.infer<typeof payoutUpdateSchema>

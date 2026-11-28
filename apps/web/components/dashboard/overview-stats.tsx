@@ -41,7 +41,7 @@ export function OverviewStats() {
         loading={isLoading}
       />
       <StatCard
-        label="Total Revenue"
+        label="Total Earnings"
         value={data ? formatNaira(data.revenueMinor) : '₦0'}
         icon={Money01Icon}
         tone="orange"

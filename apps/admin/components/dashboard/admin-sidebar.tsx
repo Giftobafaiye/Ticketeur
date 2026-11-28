@@ -16,6 +16,7 @@ import {
   CouponPercentIcon,
   Mail01Icon,
   MoneyBag02Icon,
+  MoneySend01Icon,
   Logout02Icon,
   Settings02Icon,
 } from '@hugeicons/core-free-icons'
@@ -55,6 +56,9 @@ const NAV_LINKS: NavLink[] = [
   // Money the platform is holding that it may owe back. Carries a live count
   // so an unrefunded charge is noticed from any page, not discovered.
   { href: '/refunds', label: 'Refunds Owed', icon: MoneyBag02Icon },
+  // Money the platform owes organizers. Carries a live count of requests
+  // waiting on a person (review, payment by hand, a failed transfer).
+  { href: '/payouts', label: 'Payouts', icon: MoneySend01Icon },
   // Settings last: it is configuration, not daily work.
   { href: '/settings', label: 'Settings', icon: Settings02Icon },
 ]
@@ -89,6 +93,8 @@ export function AdminSidebar({
     trpc.admin.paymentDiscrepancies.stats.queryOptions()
   )
   const owedCount = discrepancies.data?.open ?? 0
+  const payoutQueue = useQuery(trpc.admin.payouts.openCount.queryOptions())
+  const payoutCount = payoutQueue.data?.count ?? 0
 
   async function handleSignOut() {
     onNavigate?.()
@@ -163,6 +169,14 @@ export function AdminSidebar({
                         className="bg-destructive text-destructive-foreground ml-auto inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold"
                       >
                         {owedCount > 99 ? '99+' : owedCount}
+                      </span>
+                    ) : null}
+                    {link.href === '/payouts' && payoutCount > 0 ? (
+                      <span
+                        aria-label={`${payoutCount} payout ${payoutCount === 1 ? 'request needs' : 'requests need'} attention`}
+                        className="bg-primary text-primary-foreground ml-auto inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold"
+                      >
+                        {payoutCount > 99 ? '99+' : payoutCount}
                       </span>
                     ) : null}
                   </span>

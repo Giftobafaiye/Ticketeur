@@ -225,6 +225,13 @@
       "when": 1793292471522,
       "tag": "0031_marketing_consent",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795873210130,
+      "tag": "0032_organizer_payouts",
+      "breakpoints": true
     }
   ]
 }

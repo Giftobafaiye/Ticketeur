@@ -13,6 +13,7 @@ import {
   notifyFulfilment,
   OrderNotFulfillableError,
 } from '@ticketur/api/lib/orders'
+import { relayTransferWebhook } from '@ticketur/api/lib/payout-transfers'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,6 +45,27 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { ok: false, error: 'invalid json' },
       { status: 400 }
+    )
+  }
+
+  // Transfer events (organizer payouts) go to the Trigger.dev worker, which
+  // re-fetches the transfer from Flutterwave — from the address Flutterwave
+  // has whitelisted — before settling anything. Transfers that are not ours
+  // (one made by hand in the dashboard) are acknowledged and ignored. A
+  // failed hand-off answers 500 so Flutterwave sends the event again; the
+  // reconcile-payouts sweep is the backstop after that.
+  try {
+    const relayed = await relayTransferWebhook(body)
+    if (relayed.handled) {
+      return NextResponse.json({ ok: true, queued: relayed.queued })
+    }
+  } catch (err) {
+    console.error('[webhook] could not relay a flutterwave transfer event', {
+      error: err,
+    })
+    return NextResponse.json(
+      { ok: false, error: 'relay failed' },
+      { status: 500 }
     )
   }
 

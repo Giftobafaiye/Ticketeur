@@ -51,3 +51,5 @@ next-env.d.ts
 
 # Agent worktrees: each is a full nested checkout of this repo.
 .claude/worktrees/
+HANDOFF.md
+payment.txt
