@@ -19,6 +19,12 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['@hugeicons/core-free-icons', '@hugeicons/react'],
   },
   transpilePackages: ['@ticketur/ui', '@ticketur/observability'],
+  // pdfkit 0.21 locates its data files with `new URL(…, import.meta.url)`,
+  // which does not survive bundling: page-data collection for any route that
+  // reaches the ticket PDF code (/events/[slug] first) dies with "The path
+  // argument must be … URL. Received an instance of URL". pdfkit's own error
+  // text says to mark it external; this loads it from node_modules instead.
+  serverExternalPackages: ['pdfkit'],
   compiler: {
     // Keep error/warn diagnostics in production. `true` stripped every
     // console.* call, including the apps own console.error reports (e.g.
