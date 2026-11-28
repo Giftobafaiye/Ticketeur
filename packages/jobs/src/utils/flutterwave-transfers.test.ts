@@ -134,6 +134,31 @@ describe('classifyCreateTransfer', () => {
     assert.equal(classifyCreateTransfer(409, {}).kind, 'duplicate_reference')
   })
 
+  test("Flutterwave's real reused-reference answer is a duplicate, not a refusal", () => {
+    // Verbatim from the Flutterwave sandbox, 2026-11-28.
+    assert.equal(
+      classifyCreateTransfer(400, {
+        status: 'error',
+        message: 'Payout with this ref already exists',
+        data: null,
+      }).kind,
+      'duplicate_reference'
+    )
+  })
+
+  test("the sandbox's other real 400s stay refusals", () => {
+    for (const message of [
+      'Please enable IP Whitelisting to access this service',
+      'merchant is not enabled to make transfers.',
+    ]) {
+      assert.equal(
+        classifyCreateTransfer(400, { status: 'error', message, data: null }).kind,
+        'refused',
+        message
+      )
+    }
+  })
+
   test('5xx and 408 are ambiguous: the transfer may exist', () => {
     for (const status of [408, 500, 502, 503, 504]) {
       assert.equal(classifyCreateTransfer(status, {}).kind, 'ambiguous')
