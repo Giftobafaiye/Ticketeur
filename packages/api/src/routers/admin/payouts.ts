@@ -7,7 +7,6 @@ import {
   payoutAdjustments,
   payoutEvents,
   payouts,
-  payoutSettings,
   payoutTransfers,
   user,
   type PayoutStatus,
@@ -311,7 +310,6 @@ export const adminPayoutsRouter = createTRPCRouter({
       balance: {
         availableMinor: summary.availableMinor,
         withdrawableMinor: summary.withdrawableMinor,
-        heldMinor: summary.heldMinor,
         inProgressMinor: summary.inProgressMinor,
         paidOutMinor: summary.paidOutMinor,
         adjustmentsMinor: summary.adjustmentsMinor,
@@ -640,10 +638,8 @@ export const adminPayoutsRouter = createTRPCRouter({
       Number(byStatus.find((r) => r.status === status)?.totalMinor ?? 0)
 
     let availableMinor = 0
-    let heldMinor = 0
     for (const b of balances) {
       availableMinor += Math.max(0, b.summary.availableMinor)
-      heldMinor += b.summary.heldMinor
     }
 
     return {
@@ -657,9 +653,8 @@ export const adminPayoutsRouter = createTRPCRouter({
       inProgressMinor:
         total('pending_review') + total('approved') + total('processing'),
       paidOutMinor: total('paid'),
-      // What organizers could ask for right now, and what is still on hold.
+      // What organizers could ask for right now.
       availableMinor,
-      heldMinor,
     }
   }),
 
@@ -690,13 +685,11 @@ export const adminPayoutsRouter = createTRPCRouter({
         email: p?.email ?? '',
         exists: Boolean(p),
         earnedMinor: summary.earnedMinor,
-        heldMinor: summary.heldMinor,
         availableMinor: summary.availableMinor,
         withdrawableMinor: summary.withdrawableMinor,
         inProgressMinor: summary.inProgressMinor,
         paidOutMinor: summary.paidOutMinor,
         adjustmentsMinor: summary.adjustmentsMinor,
-        earlyRelease: summary.earlyRelease,
       }
     })
   }),
@@ -836,30 +829,6 @@ export const adminPayoutsRouter = createTRPCRouter({
         createdByName: ctx.session.user.name,
         createdByEmail: ctx.session.user.email,
       })
-      return { ok: true as const }
-    }),
-
-  /** Let an organizer withdraw as soon as money is paid, not after the event. */
-  setEarlyRelease: adminProcedure
-    .input(organizerIdInput.extend({ enabled: z.boolean() }))
-    .mutation(async ({ ctx, input }) => {
-      assertNotSelf(ctx.session.user.id, input.organizerId)
-      await ctx.db
-        .insert(payoutSettings)
-        .values({
-          organizerId: input.organizerId,
-          earlyRelease: input.enabled,
-          updatedBy: ctx.session.user.id,
-          updatedAt: new Date(),
-        })
-        .onConflictDoUpdate({
-          target: payoutSettings.organizerId,
-          set: {
-            earlyRelease: input.enabled,
-            updatedBy: ctx.session.user.id,
-            updatedAt: new Date(),
-          },
-        })
       return { ok: true as const }
     }),
 

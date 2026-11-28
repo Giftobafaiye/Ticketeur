@@ -6,7 +6,6 @@ import { payoutAccounts, payouts, type PayoutStatus } from '@ticketur/db'
 import {
   MIN_PAYOUT_MINOR,
   NEW_ACCOUNT_COOLDOWN_MS,
-  PAYOUT_HOLD_DAYS,
   maskAccountNumber,
   type DbExecutor,
   type PayoutMode,
@@ -107,7 +106,6 @@ export function organizerAccountView(account: ActiveAccount | null) {
 export function payoutRules() {
   return {
     minPayoutMinor: MIN_PAYOUT_MINOR,
-    holdDays: PAYOUT_HOLD_DAYS,
     cooldownHours: NEW_ACCOUNT_COOLDOWN_MS / 3_600_000,
   }
 }

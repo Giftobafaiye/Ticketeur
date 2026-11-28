@@ -5,7 +5,6 @@ import { paymentDiscrepancies } from '../schema/payments'
 import {
   payoutAdjustments,
   payouts,
-  payoutSettings,
   type PayoutStatus,
 } from '../schema/payouts'
 
@@ -13,7 +12,6 @@ import {
   COMMITTED_PAYOUT_STATUSES,
   OWED_BACK_DISCREPANCY_KINDS,
 } from './constants'
-import { lagosDate } from './release'
 import {
   summariseBalance,
   type BalanceSummary,
@@ -134,41 +132,24 @@ export async function loadAdjustmentTotals(
   return new Map(rows.map((r) => [r.organizerId, Number(r.totalMinor)]))
 }
 
-/** Organizers whose earnings release as soon as they are paid. */
-export async function loadEarlyRelease(
-  db: DbExecutor,
-  organizerId?: string
-): Promise<Set<string>> {
-  const rows = await db
-    .select({ organizerId: payoutSettings.organizerId })
-    .from(payoutSettings)
-    .where(
-      and(
-        eq(payoutSettings.earlyRelease, true),
-        organizerId ? eq(payoutSettings.organizerId, organizerId) : undefined
-      )
-    )
-  return new Set(rows.map((r) => r.organizerId))
-}
-
-/** One organizer's balance, as of `now`. */
+/**
+ * One organizer's balance. `_opts.now` is still accepted from callers but no
+ * longer matters: paid earnings are available at once, whatever the date.
+ */
 export async function loadOrganizerBalance(
   db: DbExecutor,
   organizerId: string,
-  opts: { now?: Date } = {}
+  _opts: { now?: Date } = {}
 ): Promise<BalanceSummary> {
-  const [earnings, amounts, adjustments, early] = await Promise.all([
+  const [earnings, amounts, adjustments] = await Promise.all([
     loadEventEarnings(db, organizerId),
     loadPayoutAmounts(db, organizerId),
     loadAdjustmentTotals(db, organizerId),
-    loadEarlyRelease(db, organizerId),
   ])
   return summariseBalance({
     events: earnings,
     payouts: amounts,
     adjustmentsMinor: adjustments.get(organizerId) ?? 0,
-    earlyRelease: early.has(organizerId),
-    today: lagosDate(opts.now ?? new Date()),
   })
 }
 
@@ -179,15 +160,13 @@ export async function loadOrganizerBalance(
  */
 export async function loadAllOrganizerBalances(
   db: DbExecutor,
-  opts: { now?: Date } = {}
+  _opts: { now?: Date } = {}
 ): Promise<{ organizerId: string; summary: BalanceSummary }[]> {
-  const [earnings, amounts, adjustments, early] = await Promise.all([
+  const [earnings, amounts, adjustments] = await Promise.all([
     loadEventEarnings(db),
     loadPayoutAmounts(db),
     loadAdjustmentTotals(db),
-    loadEarlyRelease(db),
   ])
-  const today = lagosDate(opts.now ?? new Date())
 
   const ids = new Set<string>()
   for (const e of earnings) ids.add(e.organizerId)
@@ -200,8 +179,6 @@ export async function loadAllOrganizerBalances(
       events: earnings.filter((e) => e.organizerId === organizerId),
       payouts: amounts.filter((a) => a.organizerId === organizerId),
       adjustmentsMinor: adjustments.get(organizerId) ?? 0,
-      earlyRelease: early.has(organizerId),
-      today,
     }),
   }))
   out.sort(

@@ -142,9 +142,8 @@ try {
 
     console.log('organizer overview')
     const o1 = await asOrg.org.payouts.overview()
-    await check('the ended event is withdrawable, the future one on hold', () => {
-      assert.equal(o1.summary.withdrawableMinor, 12_400_000)
-      assert.equal(o1.summary.heldMinor, 7_760_000)
+    await check('paid earnings are withdrawable at once, the future event included', () => {
+      assert.equal(o1.summary.withdrawableMinor, 12_400_000 + 7_760_000)
       assert.equal(o1.events.length, 2)
     })
     const dash = await asOrg.org.dashboard.stats()
@@ -161,7 +160,7 @@ try {
     const balances = await asAdmin.admin.payouts.balances()
     await check('the organizer is listed with the same numbers', () => {
       const row = balances.find((b) => b.organizerId === org.id)
-      assert.equal(row?.availableMinor, 12_400_000)
+      assert.equal(row?.availableMinor, 12_400_000 + 7_760_000)
       assert.equal(row?.name, 'IT Organizer')
     })
 
@@ -175,7 +174,7 @@ try {
     const o2 = await asOrg.org.payouts.overview()
     await check('money paid outside comes off what can be withdrawn', () => {
       assert.equal(o2.summary.adjustmentsMinor, -2_400_000)
-      assert.equal(o2.summary.withdrawableMinor, 10_000_000)
+      assert.equal(o2.summary.withdrawableMinor, 10_000_000 + 7_760_000)
     })
 
     await check('"paid outside" cannot be a credit', () =>
@@ -204,14 +203,6 @@ try {
         'FORBIDDEN'
       )
     )
-
-    await asAdmin.admin.payouts.setEarlyRelease({ organizerId: org.id, enabled: true })
-    const o3 = await asOrg.org.payouts.overview()
-    await check('early release frees the held event', () => {
-      assert.equal(o3.summary.heldMinor, 0)
-      assert.equal(o3.summary.earlyRelease, true)
-      assert.equal(o3.summary.withdrawableMinor, 10_000_000 + 7_760_000)
-    })
 
     const detail = await asAdmin.admin.payouts.organizer({ organizerId: org.id })
     await check('the organizer detail shows the adjustment', () => {
@@ -317,8 +308,8 @@ try {
       .where(eq(payoutAccounts.organizerId, org.id))
 
     console.log('withdrawal request')
-    await check('below the ₦1,000 minimum is refused', () =>
-      rejects(() => asOrg.org.payouts.requestPayoutCode({ amountMinor: 99_900 }), 'BAD_REQUEST')
+    await check('below ₦1 is refused (any amount from ₦1 up is allowed)', () =>
+      rejects(() => asOrg.org.payouts.requestPayoutCode({ amountMinor: 50 }), 'BAD_REQUEST')
     )
     await check('kobo amounts are refused', () =>
       rejects(() => asOrg.org.payouts.requestPayoutCode({ amountMinor: 100_050 }), 'BAD_REQUEST')

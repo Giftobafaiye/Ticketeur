@@ -27,7 +27,6 @@ export function PayoutBalances() {
             <tr className="text-muted-foreground text-xs font-semibold tracking-wider uppercase select-none">
               <th className="px-5 py-4 text-left">Organizer</th>
               <th className="px-5 py-4 text-right">Earned</th>
-              <th className="px-5 py-4 text-right">On hold</th>
               <th className="px-5 py-4 text-right">Available</th>
               <th className="px-5 py-4 text-right">In progress</th>
               <th className="px-5 py-4 text-right">Paid out</th>
@@ -37,13 +36,13 @@ export function PayoutBalances() {
           <tbody className="divide-border/60 divide-y">
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="px-5 py-12 text-center">
+                <td colSpan={6} className="px-5 py-12 text-center">
                   <p className="text-muted-foreground text-sm">Loading…</p>
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-5 py-12 text-center">
+                <td colSpan={6} className="px-5 py-12 text-center">
                   <p className="text-muted-foreground text-sm">
                     No organizer has earned anything yet.
                   </p>
@@ -65,15 +64,11 @@ export function PayoutBalances() {
                       </span>
                       <span className="text-muted-foreground text-xs">
                         {row.email || row.organizerId}
-                        {row.earlyRelease ? ' · early release' : ''}
                       </span>
                     </Link>
                   </td>
                   <td className="text-foreground px-5 py-4 text-right whitespace-nowrap">
                     {formatNaira(row.earnedMinor)}
-                  </td>
-                  <td className="text-muted-foreground px-5 py-4 text-right whitespace-nowrap">
-                    {formatNaira(row.heldMinor)}
                   </td>
                   <td
                     className={cn(

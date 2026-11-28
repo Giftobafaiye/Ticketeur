@@ -48,8 +48,8 @@ export function PayoutsStats() {
           loading={isLoading}
         />
         <StatCard
-          label="On hold until events end"
-          value={data ? formatNaira(data.heldMinor) : '—'}
+          label="Requested, not yet paid"
+          value={data ? formatNaira(data.inProgressMinor) : '—'}
           icon={Clock01Icon}
           tone="blue"
           loading={isLoading}

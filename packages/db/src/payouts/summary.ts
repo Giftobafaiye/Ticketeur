@@ -1,11 +1,13 @@
 import type { PayoutStatus } from '../schema/payouts'
 
-import { OPEN_PAYOUT_STATUSES, PAYOUT_HOLD_DAYS } from './constants'
-import { isReleased, releaseDateFor } from './release'
+import { OPEN_PAYOUT_STATUSES } from './constants'
 
 // The balance arithmetic, with no database in it. balance.ts loads the
 // numbers; this decides what they add up to, so every rule is unit-tested
 // without a database and every surface computes the same answer.
+//
+// Paid earnings are withdrawable straight away: there is no hold until an
+// event ends (see constants.ts).
 
 /** One event's earnings for its organizer: the share of its paid orders. */
 export type EventEarnings = {
@@ -17,35 +19,26 @@ export type EventEarnings = {
   earnedMinor: number
 }
 
-export type EventBalanceLine = EventEarnings & {
-  // The first day this event's money can be withdrawn; null = not dated.
-  releaseDate: string | null
-  released: boolean
-}
+export type EventBalanceLine = EventEarnings
 
 /** A payout total by status. */
 export type PayoutAmount = { status: PayoutStatus; amountMinor: number }
 
 export type BalanceSummary = {
-  // Everything earned, released or not.
+  // Everything earned from paid orders.
   earnedMinor: number
-  // Earned and not yet released (the event has not ended, plus the hold).
-  heldMinor: number
-  // Earned and released.
-  releasedMinor: number
   // Admin adjustments, signed.
   adjustmentsMinor: number
   // Requested, approved or being sent.
   inProgressMinor: number
   // Already paid out.
   paidOutMinor: number
-  // released + adjustments − in progress − paid out. Negative when a refund
-  // or correction landed after money had already gone.
+  // earned + adjustments − in progress − paid out. Negative when a refund or
+  // correction landed after money had already gone.
   availableMinor: number
   // What can be asked for right now: available, floored to whole naira (the
   // unit transfers are made in) and never below zero.
   withdrawableMinor: number
-  earlyRelease: boolean
   events: EventBalanceLine[]
 }
 
@@ -60,28 +53,11 @@ export function summariseBalance(input: {
   events: EventEarnings[]
   payouts: PayoutAmount[]
   adjustmentsMinor: number
-  earlyRelease: boolean
-  // Lagos date, YYYY-MM-DD.
-  today: string
-  holdDays?: number
 }): BalanceSummary {
-  const holdDays = input.holdDays ?? PAYOUT_HOLD_DAYS
-
-  const events: EventBalanceLine[] = input.events.map((e) => {
-    const releaseDate = releaseDateFor(e.lastDay, holdDays)
-    return {
-      ...e,
-      releaseDate,
-      released: input.earlyRelease || isReleased(releaseDate, input.today),
-    }
-  })
+  const events: EventBalanceLine[] = input.events.map((e) => ({ ...e }))
 
   let earnedMinor = 0
-  let releasedMinor = 0
-  for (const e of events) {
-    earnedMinor += e.earnedMinor
-    if (e.released) releasedMinor += e.earnedMinor
-  }
+  for (const e of events) earnedMinor += e.earnedMinor
 
   let inProgressMinor = 0
   let paidOutMinor = 0
@@ -92,25 +68,20 @@ export function summariseBalance(input: {
   }
 
   const availableMinor =
-    releasedMinor + input.adjustmentsMinor - inProgressMinor - paidOutMinor
+    earnedMinor + input.adjustmentsMinor - inProgressMinor - paidOutMinor
 
-  // Biggest first, then soonest to release: the order an organizer scans in.
+  // Biggest first, then by title: the order an organizer scans in.
   events.sort(
-    (a, b) =>
-      b.earnedMinor - a.earnedMinor ||
-      (a.releaseDate ?? '9999').localeCompare(b.releaseDate ?? '9999')
+    (a, b) => b.earnedMinor - a.earnedMinor || a.title.localeCompare(b.title)
   )
 
   return {
     earnedMinor,
-    heldMinor: earnedMinor - releasedMinor,
-    releasedMinor,
     adjustmentsMinor: input.adjustmentsMinor,
     inProgressMinor,
     paidOutMinor,
     availableMinor,
     withdrawableMinor: Math.max(0, wholeNaira(availableMinor)),
-    earlyRelease: input.earlyRelease,
     events,
   }
 }

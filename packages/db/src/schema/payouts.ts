@@ -270,8 +270,9 @@ export const payoutSettings = pgTable('payout_settings', {
   organizerId: text('organizer_id')
     .primaryKey()
     .references(() => user.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
-  // Earnings become withdrawable as soon as they are paid, instead of the day
-  // after the event ends. For organizers the platform trusts.
+  // UNUSED since 2026-11-28: earnings are withdrawable as soon as they are
+  // paid for every organizer, so there is nothing left to release early.
+  // Kept (no migration) in case a hold ever comes back.
   earlyRelease: boolean('early_release').notNull().default(false),
   updatedBy: text('updated_by').references(() => user.id, {
     onDelete: 'set null',

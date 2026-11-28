@@ -8,7 +8,6 @@ import { toast } from 'sonner'
 import { cn } from '@ticketur/ui/lib/utils'
 import { Button } from '@ticketur/ui/components/button'
 import { Input } from '@ticketur/ui/components/input'
-import { Switch } from '@ticketur/ui/components/switch'
 import { Textarea } from '@ticketur/ui/components/textarea'
 import {
   NativeSelect,
@@ -49,23 +48,6 @@ export function OrganizerPayoutsDetail({
     })
   }
 
-  const early = useMutation(
-    trpc.admin.payouts.setEarlyRelease.mutationOptions({
-      onSuccess: (_res, vars) => {
-        toast.success(
-          vars.enabled
-            ? 'Earnings now release as soon as they are paid'
-            : 'Earnings release the day after each event again'
-        )
-        refresh()
-      },
-      onError: (err) =>
-        toast.error('Could not change early release', {
-          description: err.message,
-        }),
-    })
-  )
-
   if (isLoading) {
     return (
       <div className="flex flex-col gap-3">
@@ -96,14 +78,13 @@ export function OrganizerPayoutsDetail({
         </p>
         {data.isSelf ? (
           <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">
-            This is your own account. You cannot adjust it or release it early.
+            This is your own account. You cannot adjust it.
           </p>
         ) : null}
       </header>
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <Figure label="Earned" minor={summary.earnedMinor} />
-        <Figure label="On hold" minor={summary.heldMinor} />
         <Figure label="Adjustments" minor={summary.adjustmentsMinor} />
         <Figure label="In progress" minor={summary.inProgressMinor} />
         <Figure label="Paid out" minor={summary.paidOutMinor} />
@@ -111,25 +92,6 @@ export function OrganizerPayoutsDetail({
           label="Available"
           minor={summary.availableMinor}
           tone={summary.availableMinor < 0 ? 'bad' : 'good'}
-        />
-      </section>
-
-      <section className="border-border/60 bg-background flex items-start justify-between gap-4 rounded-2xl border p-5">
-        <div className="flex flex-col gap-1">
-          <span className="text-foreground font-semibold">Early release</span>
-          <span className="text-muted-foreground text-sm">
-            Normally an event&apos;s money can be withdrawn the day after it
-            ends, so a cancelled event can still be refunded. Turn this on for
-            an organizer you trust to let them withdraw as soon as buyers pay.
-          </span>
-        </div>
-        <Switch
-          checked={summary.earlyRelease}
-          disabled={data.isSelf || early.isPending}
-          onCheckedChange={(checked) =>
-            early.mutate({ organizerId, enabled: checked })
-          }
-          aria-label="Early release"
         />
       </section>
 
@@ -153,25 +115,9 @@ export function OrganizerPayoutsDetail({
                     {e.lastDay ? `ends ${formatShortDate(e.lastDay)}` : 'no date'}
                   </span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-foreground font-semibold">
-                    {formatNaira(e.earnedMinor)}
-                  </span>
-                  <span
-                    className={cn(
-                      'rounded-md px-2 py-0.5 text-xs font-semibold',
-                      e.released
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
-                        : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
-                    )}
-                  >
-                    {e.released
-                      ? 'Released'
-                      : e.releaseDate
-                        ? `Releases ${formatShortDate(e.releaseDate)}`
-                        : 'Held: no date'}
-                  </span>
-                </div>
+                <span className="text-foreground font-semibold">
+                  {formatNaira(e.earnedMinor)}
+                </span>
               </li>
             ))}
           </ul>
