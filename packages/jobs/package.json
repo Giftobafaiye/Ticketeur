@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "trigger dev",
     "deploy": "trigger deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import ./src/test-support/ts-resolve-hook.ts --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@react-email/render": "^2.3.1",
