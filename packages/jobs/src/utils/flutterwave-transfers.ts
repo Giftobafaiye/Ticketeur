@@ -152,8 +152,15 @@ export function parseTransfer(data: unknown): FlutterwaveTransfer | null {
   }
 }
 
+// Flutterwave's sandbox answers a reused reference with HTTP 400 "Payout with
+// this ref already exists" (seen 2026-11-28), so "ref" has to count as well as
+// "reference". Reading it as a plain refusal would mark the payout failed
+// while the original transfer can still complete, and a retry would pay twice.
 function looksLikeDuplicateReference(message: string): boolean {
-  return /reference/i.test(message) && /(duplicate|already|exist)/i.test(message)
+  return (
+    /\bref(erence)?s?\b/i.test(message) &&
+    /(duplicate|already|exist)/i.test(message)
+  )
 }
 
 /**

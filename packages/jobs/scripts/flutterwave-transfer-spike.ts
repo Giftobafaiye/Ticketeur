@@ -179,9 +179,11 @@ if (first.kind === 'accepted') {
 
 const again = await transfers.createTransfer({ ...input, reference: okRef }, opts)
 show('6. POST /v3/transfers again, SAME reference', again)
+// Must classify as duplicate_reference: a plain 'refused' would make the
+// engine mark the payout failed while the first transfer can still complete.
 note(
-  'a reused reference is refused (not a second transfer)',
-  again.kind === 'duplicate_reference' || again.kind === 'refused',
+  'a reused reference is read as a duplicate (no second transfer, not a failure)',
+  again.kind === 'duplicate_reference',
   JSON.stringify(again)
 )
 
