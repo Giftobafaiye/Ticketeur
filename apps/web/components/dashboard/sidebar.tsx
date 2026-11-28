@@ -14,6 +14,7 @@ import {
   CheckListIcon,
   Logout02Icon,
   Tag01Icon,
+  Wallet01Icon,
 } from '@hugeicons/core-free-icons'
 
 import { cn } from '@ticketur/ui/lib/utils'
@@ -54,6 +55,7 @@ export const ORG_SIDEBAR_CONFIG: SidebarConfig = {
     { href: '/org/forms', label: 'Forms', icon: CheckListIcon },
     { href: '/org/contests', label: 'Contests', icon: ChampionIcon },
     { href: '/org/vouchers', label: 'Vouchers', icon: Tag01Icon },
+    { href: '/org/payouts', label: 'Payouts', icon: Wallet01Icon },
   ],
   profileHref: '/org/profile',
   profileLabel: 'Account Settings',

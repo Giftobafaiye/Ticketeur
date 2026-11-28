@@ -89,3 +89,25 @@ export type {
   VoteKind,
   NominationStatus,
 } from './contests'
+export {
+  payoutAccounts,
+  payouts,
+  payoutTransfers,
+  payoutAdjustments,
+  payoutSettings,
+  payoutEvents,
+  payoutCodes,
+  payoutAccountsRelations,
+  payoutsRelations,
+  payoutTransfersRelations,
+  payoutEventsRelations,
+} from './payouts'
+export type {
+  PayoutStatus,
+  PayoutMethod,
+  PayoutAccountStatus,
+  PayoutTransferStatus,
+  PayoutAdjustmentKind,
+  PayoutCodePurpose,
+  PayoutActorType,
+} from './payouts'
