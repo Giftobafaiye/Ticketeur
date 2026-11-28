@@ -34,7 +34,6 @@ const {
   paymentDiscrepancies,
   payouts,
   payoutAdjustments,
-  payoutSettings,
   payoutAccounts,
   payoutEvents,
 } = schema
@@ -99,7 +98,7 @@ try {
       { id: id('ord'), eventId: evEnded, quantity: 1, subtotalMinor: 9_999_900, feeMinor: 0, totalMinor: 9_999_900, status: 'pending' },
       // Paid, then the organizer rejected the application: owed back, excluded.
       { id: rejectedReg, eventId: evEnded, type: 'registration_fee', quantity: 1, subtotalMinor: 500_000, feeMinor: 25_000, totalMinor: 525_000, status: 'paid' },
-      // Held: the event is in the future.
+      // The event is in the future: available at once all the same.
       { id: id('ord'), eventId: evFuture, type: 'vote_purchase', quantity: 1, subtotalMinor: 1_000_000, feeMinor: 50_000, totalMinor: 1_050_000, status: 'paid' },
       // Org B, undated event.
       { id: id('ord'), eventId: evTbd, quantity: 3, subtotalMinor: 3_000_000, feeMinor: 150_000, totalMinor: 3_150_000, status: 'paid' },
@@ -133,34 +132,34 @@ try {
       kind: 'paid_outside',
       reason: 'Paid by bank transfer in October',
     })
-    await tx.insert(payoutSettings).values({ organizerId: orgB, earlyRelease: true })
 
     console.log('balances')
     const a = await loadOrganizerBalance(tx, orgA, { now })
     check('A: earned excludes unpaid and owed-back orders', () =>
       assert.equal(a.earnedMinor, 7_500_000)
     )
-    check('A: the ended event is released, the future one held', () => {
-      assert.equal(a.releasedMinor, 6_500_000)
-      assert.equal(a.heldMinor, 1_000_000)
+    check('A: the future event counts at once: there is no hold', () => {
+      const future = a.events.find((e) => e.eventId === evFuture)
+      assert.equal(future?.earnedMinor, 1_000_000)
     })
     check('A: paid counts, failed does not, adjustment applies', () => {
       assert.equal(a.paidOutMinor, 1_000_000)
       assert.equal(a.inProgressMinor, 0)
       assert.equal(a.adjustmentsMinor, -500_000)
-      assert.equal(a.availableMinor, 5_000_000)
+      // 7,500,000 earned − 1,000,000 paid − 500,000 adjusted.
+      assert.equal(a.availableMinor, 6_000_000)
     })
     const b = await loadOrganizerBalance(tx, orgB, { now })
-    check('B: early release frees an undated event', () => {
+    check('B: an undated event is available at once', () => {
       assert.equal(b.earnedMinor, 3_000_000)
       assert.equal(b.availableMinor, 3_000_000)
-      assert.equal(b.events[0]?.releaseDate, null)
+      assert.equal(b.events[0]?.lastDay, null)
     })
     const all = await loadAllOrganizerBalances(tx, { now })
     check('the all-organizers view agrees with the single view', () => {
       const fromAll = all.find((x) => x.organizerId === orgA)?.summary
       assert.equal(fromAll?.availableMinor, a.availableMinor)
-      assert.equal(fromAll?.heldMinor, a.heldMinor)
+      assert.equal(fromAll?.earnedMinor, a.earnedMinor)
     })
 
     console.log('database guards')
@@ -249,7 +248,7 @@ try {
     })
     const afterApprove = await loadOrganizerBalance(tx, orgA, { now })
     check('the approved request is held against the balance', () =>
-      assert.equal(afterApprove.availableMinor, 5_000_000 - 100_000)
+      assert.equal(afterApprove.availableMinor, 6_000_000 - 100_000)
     )
 
     throw new Rollback()

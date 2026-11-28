@@ -1,9 +1,9 @@
-import { PAYOUT_HOLD_DAYS, PAYOUT_TIMEZONE } from './constants'
+import { PAYOUT_TIMEZONE } from './constants'
 
-// When an event's earnings become withdrawable. Pure date arithmetic on
-// YYYY-MM-DD strings — the same shape `events.event_date` and
-// `events.end_date` are stored in — so there is no timezone to get wrong
-// except the one place "today" is decided.
+// Date helpers on YYYY-MM-DD strings, the shape `events.event_date` and
+// `events.end_date` are stored in, so there is no timezone to get wrong
+// except the one place "today" is decided. (Earnings used to be held until
+// an event ended; they no longer are, see constants.ts.)
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -32,22 +32,4 @@ export function lagosDate(now: Date): string {
 export function addDays(ymd: string, days: number): string {
   const ms = Date.parse(`${ymd}T00:00:00Z`) + days * 86_400_000
   return new Date(ms).toISOString().slice(0, 10)
-}
-
-/**
- * The first day an event's earnings can be withdrawn: its last day plus the
- * hold. NULL when the event has no usable date (a "TBD" event) — such money
- * stays on hold until the event is dated, or an admin releases it early.
- */
-export function releaseDateFor(
-  lastDay: string | null,
-  holdDays: number = PAYOUT_HOLD_DAYS
-): string | null {
-  if (!isIsoDate(lastDay)) return null
-  return addDays(lastDay, holdDays)
-}
-
-/** Whether a release date has arrived. A missing date never has. */
-export function isReleased(releaseDate: string | null, today: string): boolean {
-  return releaseDate !== null && releaseDate <= today
 }

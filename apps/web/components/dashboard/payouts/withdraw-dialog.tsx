@@ -138,8 +138,7 @@ export function WithdrawDialog({
               />
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <span className="text-muted-foreground">
-                  Available: {formatNaira(withdrawableMinor)} · minimum{' '}
-                  {formatNaira(minPayoutMinor)}
+                  Available: {formatNaira(withdrawableMinor)}
                 </span>
                 <button
                   type="button"

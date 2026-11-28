@@ -52,9 +52,9 @@ import {
   sendPayoutUpdateEmail,
 } from '../../lib/payout-emails'
 
-// The organizer's Payouts page: what they have earned, what is on hold and
-// until when, the bank account money goes to, and every withdrawal they have
-// asked for — plus the three things they can do about it.
+// The organizer's Payouts page: what they have earned (all of it withdrawable
+// as soon as it is paid), the bank account money goes to, and every
+// withdrawal they have asked for — plus the three things they can do about it.
 //
 // ── How a withdrawal is protected ──
 //   1. The bank account is real: Flutterwave names the holder, and the name
@@ -250,14 +250,11 @@ export const orgPayoutsRouter = createTRPCRouter({
       rules: payoutRules(),
       summary: {
         earnedMinor: summary.earnedMinor,
-        heldMinor: summary.heldMinor,
-        releasedMinor: summary.releasedMinor,
         adjustmentsMinor: summary.adjustmentsMinor,
         inProgressMinor: summary.inProgressMinor,
         paidOutMinor: summary.paidOutMinor,
         availableMinor: summary.availableMinor,
         withdrawableMinor: summary.withdrawableMinor,
-        earlyRelease: summary.earlyRelease,
       },
       events: summary.events.map((e) => ({
         eventId: e.eventId,
@@ -265,8 +262,6 @@ export const orgPayoutsRouter = createTRPCRouter({
         lastDay: e.lastDay,
         paidOrders: e.paidOrders,
         earnedMinor: e.earnedMinor,
-        releaseDate: e.releaseDate,
-        released: e.released,
       })),
       account: organizerAccountView(account),
       payouts: recent.map(organizerPayoutView),

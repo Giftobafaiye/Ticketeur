@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import {
   BankIcon,
   CheckmarkCircle02Icon,
-  Clock01Icon,
+  Coins01Icon,
   MoneySend01Icon,
   Wallet01Icon,
 } from '@hugeicons/core-free-icons'
@@ -58,7 +58,7 @@ export function OrgPayoutsContent() {
         : data.hasOpenPayout
           ? 'You have a withdrawal in progress.'
           : (summary?.withdrawableMinor ?? 0) < data.rules.minPayoutMinor
-            ? `You need at least ${formatNaira(data.rules.minPayoutMinor)} available to withdraw.`
+            ? 'Nothing available to withdraw yet.'
             : null
 
   return (
@@ -108,9 +108,9 @@ export function OrgPayoutsContent() {
           loading={isLoading}
         />
         <StatCard
-          label="On hold"
-          value={summary ? formatNaira(summary.heldMinor) : '—'}
-          icon={Clock01Icon}
+          label="Total earned"
+          value={summary ? formatNaira(summary.earnedMinor) : '—'}
+          icon={Coins01Icon}
           tone="orange"
           loading={isLoading}
         />
@@ -179,8 +179,6 @@ export function OrgPayoutsContent() {
       <EarningsByEvent
         loading={isLoading}
         events={data?.events ?? []}
-        earlyRelease={summary?.earlyRelease ?? false}
-        holdDays={data?.rules.holdDays ?? 1}
         adjustmentsMinor={summary?.adjustmentsMinor ?? 0}
       />
 
@@ -214,21 +212,15 @@ type EventLine = {
   lastDay: string | null
   paidOrders: number
   earnedMinor: number
-  releaseDate: string | null
-  released: boolean
 }
 
 function EarningsByEvent({
   loading,
   events,
-  earlyRelease,
-  holdDays,
   adjustmentsMinor,
 }: {
   loading: boolean
   events: EventLine[]
-  earlyRelease: boolean
-  holdDays: number
   adjustmentsMinor: number
 }) {
   return (
@@ -240,10 +232,7 @@ function EarningsByEvent({
         <p className="text-muted-foreground text-sm">
           Your share is the price of every paid ticket, registration and vote,
           after any discount. The service fee buyers pay on top goes to
-          Ticketeur.{' '}
-          {earlyRelease
-            ? 'Your earnings can be withdrawn as soon as they are paid.'
-            : `Money from an event can be withdrawn ${holdDays === 1 ? 'the day' : `${holdDays} days`} after it ends.`}
+          Ticketeur. Your earnings can be withdrawn as soon as a buyer pays.
         </p>
       </div>
 
@@ -274,22 +263,9 @@ function EarningsByEvent({
                   {e.lastDay ? ` · ends ${formatShortDate(e.lastDay)}` : ''}
                 </span>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="font-heading text-foreground font-semibold">
-                  {formatNaira(e.earnedMinor)}
-                </span>
-                {e.released ? (
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-                    Available
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
-                    {e.releaseDate
-                      ? `On hold until ${formatShortDate(e.releaseDate)}`
-                      : 'On hold until the event is dated'}
-                  </span>
-                )}
-              </div>
+              <span className="font-heading text-foreground font-semibold">
+                {formatNaira(e.earnedMinor)}
+              </span>
             </li>
           ))}
         </ul>

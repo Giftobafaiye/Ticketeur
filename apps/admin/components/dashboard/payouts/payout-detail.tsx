@@ -155,7 +155,6 @@ export function PayoutDetail({ id }: { id: string }) {
 
         <Card title="Their balance">
           <Row label="Earned in total" value={formatNaira(balance.earnedMinor)} />
-          <Row label="On hold" value={formatNaira(balance.heldMinor)} />
           <Row label="Adjustments" value={formatNaira(balance.adjustmentsMinor)} />
           <Row label="Paid out before" value={formatNaira(balance.paidOutMinor)} />
           <Row label="In progress (incl. this)" value={formatNaira(balance.inProgressMinor)} />

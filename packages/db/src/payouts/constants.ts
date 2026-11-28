@@ -15,16 +15,18 @@ export const PAYOUT_CURRENCY = 'NGN'
  */
 export const PAYOUT_TIMEZONE = 'Africa/Lagos'
 
-/**
- * Days after an event's last day before its earnings can be withdrawn. One:
- * the money from an event becomes available the day after it ends, so a
- * cancelled event still has its takings on the platform to refund buyers
- * from. An admin can waive it per organizer (payout_settings.early_release).
- */
-export const PAYOUT_HOLD_DAYS = 1
+// Earnings are withdrawable as soon as an order is paid: there is no hold
+// until the event ends (product decision, 2026-11-28). Admin approval of
+// every request is the control. A cancelled event's refunds can therefore
+// exceed what is left on the platform; the balance then goes negative and
+// blocks further withdrawals until it is made up.
 
-/** The smallest withdrawal: ₦1,000, in kobo. */
-export const MIN_PAYOUT_MINOR = 100_000
+/**
+ * The smallest withdrawal: ₦1, in kobo. Organizers may withdraw any amount
+ * (product decision, 2026-11-28); this only keeps a request above zero, in
+ * the whole naira transfers are made in.
+ */
+export const MIN_PAYOUT_MINOR = 100
 
 /**
  * A bank account added (or changed to) less than this long ago cannot receive

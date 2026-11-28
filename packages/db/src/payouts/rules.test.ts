@@ -1,20 +1,14 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
-import { MIN_PAYOUT_MINOR, PAYOUT_HOLD_DAYS } from './constants'
+import { MIN_PAYOUT_MINOR } from './constants'
 import { formatNaira, maskAccountNumber, nameMatch } from './format'
 import {
   isPayoutReference,
   transferReference,
   TEST_MODE_SUCCESS_SUFFIX,
 } from './references'
-import {
-  addDays,
-  isIsoDate,
-  isReleased,
-  lagosDate,
-  releaseDateFor,
-} from './release'
+import { addDays, isIsoDate, lagosDate } from './release'
 import {
   balanceCovers,
   summariseBalance,
@@ -24,9 +18,8 @@ import {
 import { canTransition, isCommittedStatus, isOpenStatus } from './transitions'
 
 describe('the rules themselves', () => {
-  test('money releases the day after the event, minimum is ₦1,000', () => {
-    assert.equal(PAYOUT_HOLD_DAYS, 1)
-    assert.equal(MIN_PAYOUT_MINOR, 100_000)
+  test('any amount from ₦1 up (product decision, 2026-11-28)', () => {
+    assert.equal(MIN_PAYOUT_MINOR, 100)
   })
 })
 
@@ -49,20 +42,6 @@ describe('dates', () => {
     assert.equal(addDays('2026-12-31', 1), '2027-01-01')
     assert.equal(addDays('2026-02-28', 1), '2026-03-01')
   })
-
-  test('an event ending on the 20th releases on the 21st', () => {
-    const release = releaseDateFor('2026-12-20')
-    assert.equal(release, '2026-12-21')
-    assert.equal(isReleased(release, '2026-12-20'), false)
-    assert.equal(isReleased(release, '2026-12-21'), true)
-    assert.equal(isReleased(release, '2027-01-05'), true)
-  })
-
-  test('an undated event never releases on its own', () => {
-    assert.equal(releaseDateFor(null), null)
-    assert.equal(releaseDateFor('TBD'), null)
-    assert.equal(isReleased(null, '2099-01-01'), false)
-  })
 })
 
 const VOICES: EventEarnings = {
@@ -81,39 +60,28 @@ const EKO: EventEarnings = {
 }
 
 describe('summariseBalance', () => {
-  test('ended events are available, upcoming ones are held', () => {
+  test('paid earnings are available at once: ended, upcoming or undated', () => {
+    const UNDATED: EventEarnings = {
+      eventId: 'ev_tbd',
+      title: 'Date to be announced',
+      lastDay: null,
+      paidOrders: 1,
+      earnedMinor: 300_000,
+    }
     const s = summariseBalance({
-      events: [EKO, VOICES],
+      // EKO ends 2026-12-20, after today; it still counts in full.
+      events: [EKO, VOICES, UNDATED],
       payouts: [],
       adjustmentsMinor: 0,
-      earlyRelease: false,
-      today: '2026-11-28',
     })
-    assert.equal(s.earnedMinor, 20_160_000)
-    assert.equal(s.releasedMinor, 12_400_000)
-    assert.equal(s.heldMinor, 7_760_000)
-    assert.equal(s.availableMinor, 12_400_000)
-    assert.equal(s.withdrawableMinor, 12_400_000)
+    assert.equal(s.earnedMinor, 20_460_000)
+    assert.equal(s.availableMinor, 20_460_000)
+    assert.equal(s.withdrawableMinor, 20_460_000)
     // Biggest first.
     assert.deepEqual(
-      s.events.map((e) => [e.eventId, e.released]),
-      [
-        ['ev_voices', true],
-        ['ev_eko', false],
-      ]
+      s.events.map((e) => e.eventId),
+      ['ev_voices', 'ev_eko', 'ev_tbd']
     )
-  })
-
-  test('early release makes everything available, dated or not', () => {
-    const s = summariseBalance({
-      events: [EKO, { ...VOICES, lastDay: null }],
-      payouts: [],
-      adjustmentsMinor: 0,
-      earlyRelease: true,
-      today: '2026-11-28',
-    })
-    assert.equal(s.heldMinor, 0)
-    assert.equal(s.availableMinor, 20_160_000)
   })
 
   test('open and paid payouts hold money; failed, rejected, cancelled release it', () => {
@@ -129,8 +97,6 @@ describe('summariseBalance', () => {
         { status: 'cancelled', amountMinor: 9_999_900 },
       ],
       adjustmentsMinor: 0,
-      earlyRelease: false,
-      today: '2026-11-28',
     })
     assert.equal(s.paidOutMinor, 5_000_000)
     assert.equal(s.inProgressMinor, 1_500_000)
@@ -142,8 +108,6 @@ describe('summariseBalance', () => {
       events: [VOICES],
       payouts: [],
       adjustmentsMinor: -12_400_000,
-      earlyRelease: false,
-      today: '2026-11-28',
     })
     assert.equal(s.availableMinor, 0)
     assert.equal(s.withdrawableMinor, 0)
@@ -154,8 +118,6 @@ describe('summariseBalance', () => {
       events: [VOICES],
       payouts: [{ status: 'paid', amountMinor: 12_400_000 }],
       adjustmentsMinor: -500_000,
-      earlyRelease: false,
-      today: '2026-11-28',
     })
     assert.equal(s.availableMinor, -500_000)
     assert.equal(s.withdrawableMinor, 0)
@@ -166,8 +128,6 @@ describe('summariseBalance', () => {
       events: [{ ...VOICES, earnedMinor: 1_234_567 }],
       payouts: [],
       adjustmentsMinor: 0,
-      earlyRelease: false,
-      today: '2026-11-28',
     })
     assert.equal(s.availableMinor, 1_234_567)
     assert.equal(s.withdrawableMinor, 1_234_500)
