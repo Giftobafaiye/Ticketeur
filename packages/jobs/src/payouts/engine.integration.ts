@@ -10,6 +10,7 @@
 // Everything runs inside one transaction that is rolled back at the end.
 
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 
 const url = process.env.DATABASE_URL ?? ''
 if (!/@(localhost|127\.0\.0\.1):\d+\//.test(url)) {
@@ -26,7 +27,7 @@ const { db, user, events, orders, payouts, payoutTransfers, payoutAdjustments } 
 class Rollback extends Error {}
 
 const run = Date.now().toString(36)
-const id = (p: string) => `${p}_eit_${run}_${Math.random().toString(36).slice(2, 8)}`
+const id = (p: string) => `${p}_eit_${run}_${randomUUID().slice(0, 8)}`
 const now = new Date()
 
 let checks = 0

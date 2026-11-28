@@ -16,9 +16,10 @@
 // is rolled back at the end, so nothing it writes survives.
 
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 
-const url = process.env.DATABASE_URL ?? ''
-if (!/@(localhost|127\.0\.0\.1):\d+\//.test(url)) {
+const databaseUrl = process.env.DATABASE_URL ?? ''
+if (!/@(localhost|127\.0\.0\.1):\d+\//.test(databaseUrl)) {
   console.error('Refusing to run: DATABASE_URL is not a local database.')
   process.exit(1)
 }
@@ -28,10 +29,11 @@ if (!/@(localhost|127\.0\.0\.1):\d+\//.test(url)) {
 // harmless 200 — the email helpers never throw either way.
 const realFetch = globalThis.fetch
 globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
-  const href = String(input instanceof Request ? input.url : input)
+  const url = new URL(String(input instanceof Request ? input.url : input))
+  const isFlutterwave = url.hostname === 'api.flutterwave.com'
   const reply = (status: number, body: unknown) =>
     new Response(JSON.stringify(body), { status })
-  if (href.endsWith('/v3/banks/NG')) {
+  if (isFlutterwave && url.pathname === '/v3/banks/NG') {
     return reply(200, {
       status: 'success',
       data: [
@@ -40,7 +42,7 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
       ],
     })
   }
-  if (href.endsWith('/v3/accounts/resolve')) {
+  if (isFlutterwave && url.pathname === '/v3/accounts/resolve') {
     const body = JSON.parse(String(init?.body ?? '{}')) as {
       account_number?: string
     }
@@ -51,7 +53,7 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
         })
       : reply(400, { status: 'error', message: 'Sorry, recipient account could not be validated.' })
   }
-  if (href.includes('flutterwave.com')) return reply(500, { status: 'error' })
+  if (isFlutterwave) return reply(500, { status: 'error' })
   return reply(200, { id: 'run_fake' })
 }) as typeof fetch
 void realFetch
@@ -72,7 +74,7 @@ class Rollback extends Error {}
 
 const run = Date.now().toString(36)
 const id = (p: string) =>
-  `${p}_pit_${run}_${Math.random().toString(36).slice(2, 8)}`
+  `${p}_pit_${run}_${randomUUID().slice(0, 8)}`
 const now = new Date()
 
 let checks = 0

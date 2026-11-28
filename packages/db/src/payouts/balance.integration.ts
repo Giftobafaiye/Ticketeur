@@ -13,6 +13,7 @@
 // so the database is left exactly as it was.
 
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 
 import { eq } from 'drizzle-orm'
 
@@ -48,7 +49,7 @@ function pgCode(err: unknown): string | undefined {
 }
 
 const run = Date.now().toString(36)
-const id = (p: string) => `${p}_it_${run}_${Math.random().toString(36).slice(2, 8)}`
+const id = (p: string) => `${p}_it_${run}_${randomUUID().slice(0, 8)}`
 const now = new Date()
 
 let checks = 0
