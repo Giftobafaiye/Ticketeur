@@ -173,7 +173,18 @@ export function PayoutDetail({ id }: { id: string }) {
         </Card>
       </section>
 
-      <Actions id={id} data={data} onDone={refresh} />
+      {payout.failureReason ? (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+          {payout.failureReason}
+        </p>
+      ) : null}
+
+      <Actions
+        id={id}
+        data={data}
+        latestReference={data.transfers[data.transfers.length - 1]?.reference ?? null}
+        onDone={refresh}
+      />
 
       {data.transfers.length > 0 ? (
         <section className="flex flex-col gap-3">
@@ -264,9 +275,11 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
 function Actions({
   id,
   data,
+  latestReference,
   onDone,
 }: {
   id: string
+  latestReference: string | null
   data: {
     mode: 'off' | 'manual' | 'live'
     payout: { amountMinor: number }
@@ -323,13 +336,104 @@ function Actions({
     })
   )
 
+  const retry = useMutation(
+    trpc.admin.payouts.retry.mutationOptions({
+      onSuccess: () => {
+        toast.success('Sending again as a new attempt')
+        onDone()
+      },
+      onError: (err) => toast.error('Could not retry', { description: err.message }),
+    })
+  )
+  const [typedReference, setTypedReference] = useState('')
+  const resolve = useMutation(
+    trpc.admin.payouts.resolveUnconfirmed.mutationOptions({
+      onSuccess: (_res, vars) => {
+        toast.success(
+          vars.outcome === 'paid'
+            ? 'Recorded as paid'
+            : 'Recorded as not sent — you can retry it now'
+        )
+        setTypedReference('')
+        onDone()
+      },
+      onError: (err) =>
+        toast.error('Could not record it', { description: err.message }),
+    })
+  )
+
   const { actions } = data
   const amount = formatNaira(data.payout.amountMinor)
-  if (!actions.canApprove && !actions.canMarkPaid && !actions.canReject) return null
+  if (
+    !actions.canApprove &&
+    !actions.canMarkPaid &&
+    !actions.canReject &&
+    !actions.canRetry &&
+    !actions.canResolveUnconfirmed
+  ) {
+    return null
+  }
 
   return (
     <section className="border-border/60 bg-background flex flex-col gap-5 rounded-2xl border p-5">
       <h2 className="font-heading text-foreground text-base font-semibold">Decide</h2>
+
+      {actions.canResolveUnconfirmed && latestReference ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-500/40 dark:bg-amber-500/10">
+          <p className="text-foreground text-sm">
+            Flutterwave never confirmed this transfer. Search for reference{' '}
+            <span className="font-mono font-semibold">{latestReference}</span>{' '}
+            in the Flutterwave dashboard (Transfers), then record what you see.
+            The sweep keeps checking on its own every 15 minutes.
+          </p>
+          <Input
+            value={typedReference}
+            onChange={(e) => setTypedReference(e.target.value)}
+            placeholder="Type the reference to confirm you checked"
+            disabled={resolve.isPending}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              disabled={typedReference.trim() !== latestReference || resolve.isPending}
+              onClick={() =>
+                resolve.mutate({ id, outcome: 'paid', reference: typedReference.trim() })
+              }
+            >
+              It was paid
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={typedReference.trim() !== latestReference || resolve.isPending}
+              onClick={() =>
+                resolve.mutate({
+                  id,
+                  outcome: 'not_sent',
+                  reference: typedReference.trim(),
+                })
+              }
+            >
+              No such transfer — it was not sent
+            </Button>
+          </div>
+          <p className="text-muted-foreground text-xs">
+            Only choose “not sent” if the dashboard has no transfer with this
+            reference. If it does and it is still pending, wait.
+          </p>
+        </div>
+      ) : null}
+
+      {actions.canRetry ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button disabled={retry.isPending} onClick={() => retry.mutate({ id })}>
+            {retry.isPending ? 'Retrying…' : `Retry transfer of ${amount}`}
+          </Button>
+          <span className="text-muted-foreground text-sm">
+            Sends a new transfer with a new reference. The last one failed
+            definitively, so this cannot pay twice.
+          </span>
+        </div>
+      ) : null}
 
       {actions.canApprove ? (
         <div className="flex flex-wrap items-center gap-3">

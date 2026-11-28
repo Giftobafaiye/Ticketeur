@@ -27,8 +27,12 @@ import {
 } from '@ticketur/db/payouts'
 
 import { adminProcedure, createTRPCRouter } from '../../trpc'
-import { payoutsMode } from '../../lib/payouts'
+import {
+  isUniqueViolation as isUniqueViolationError,
+  payoutsMode,
+} from '../../lib/payouts'
 import { sendPayoutUpdateEmail } from '../../lib/payout-emails'
+import { enqueuePayoutSend } from '../../lib/payout-transfers'
 
 // The admin side of payouts: every organizer's balance, the adjustments that
 // correct it, and the queue of withdrawals to decide.
@@ -334,8 +338,152 @@ export const adminPayoutsRouter = createTRPCRouter({
     })
 
     await sendPayoutUpdateEmail('approved', approved)
+    // In `live` mode the worker sends it. A lost enqueue is not lost money:
+    // the reconcile-payouts sweep sends anything left approved.
+    if (mode === 'live') await enqueuePayoutSend(approved.id)
     return { ok: true as const, mode }
   }),
+
+  /**
+   * Send a payout whose last transfer definitively FAILED again, as a new
+   * attempt with a new reference. Only from 'failed' — never from an attempt
+   * whose outcome is unknown; that one is resolved below, by a person.
+   */
+  retry: adminProcedure.input(payoutIdInput).mutation(async ({ ctx, input }) => {
+    if (payoutsMode() !== 'live') {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message:
+          'Automatic transfers are off. Pay it by hand and mark it paid, or set PAYOUTS_MODE=live.',
+      })
+    }
+    const now = new Date()
+    const approved = await ctx.db.transaction(async (tx) => {
+      const row = await lockForDecision(tx, input.id, ctx.session.user.id)
+      if (row.status !== 'failed') throw wrongStatus(row.status)
+      // Failure released the amount, so it has to fit on top again.
+      const summary = await loadOrganizerBalance(tx, row.organizerId, { now })
+      if (!balanceCovers(summary, row.amountMinor, false)) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: `The organizer's balance no longer covers this (${formatNaira(summary.availableMinor)} available).`,
+        })
+      }
+      const moved = await transitionPayout(tx, {
+        payoutId: row.id,
+        from: ['failed'],
+        to: 'approved',
+        actor: adminActor(ctx.session),
+        set: { failureReason: '' },
+        note: 'Retry',
+        now,
+      })
+      if (!moved.ok) {
+        throw moved.reason === 'wrong_status'
+          ? wrongStatus(moved.status)
+          : new TRPCError({ code: 'NOT_FOUND', message: 'Payout not found' })
+      }
+      return moved.payout
+    }).catch((err: unknown) => {
+      if (isUniqueViolationError(err)) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message:
+            'This organizer already has another withdrawal in progress. Finish that one first.',
+        })
+      }
+      throw err
+    })
+    await enqueuePayoutSend(approved.id)
+    return { ok: true as const }
+  }),
+
+  /**
+   * A transfer whose outcome never arrived: the create call timed out, and
+   * Flutterwave has not (yet) shown it to a lookup. Only a person looking at
+   * the Flutterwave dashboard can settle it:
+   *
+   *   paid      the dashboard shows the transfer succeeded
+   *   not_sent  the dashboard has no transfer with this reference
+   *
+   * `not_sent` frees the payout for a retry. Getting it wrong is how money is
+   * paid twice, which is why it needs the reference typed back.
+   */
+  resolveUnconfirmed: adminProcedure
+    .input(
+      payoutIdInput.extend({
+        outcome: z.enum(['paid', 'not_sent']),
+        // The attempt's reference, typed back as proof it was looked up.
+        reference: z.string().trim().min(1),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const now = new Date()
+      const result = await ctx.db.transaction(async (tx) => {
+        const row = await lockForDecision(tx, input.id, ctx.session.user.id)
+        if (row.status !== 'processing') throw wrongStatus(row.status)
+        const [attempt] = await tx
+          .select()
+          .from(payoutTransfers)
+          .where(eq(payoutTransfers.payoutId, row.id))
+          .orderBy(desc(payoutTransfers.attempt))
+          .for('update')
+          .limit(1)
+        if (!attempt || attempt.status !== 'unconfirmed') {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message:
+              'This transfer is not waiting for confirmation any more. Reload.',
+          })
+        }
+        if (attempt.reference !== input.reference) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'That is not this transfer’s reference.',
+          })
+        }
+        const paid = input.outcome === 'paid'
+        await tx
+          .update(payoutTransfers)
+          .set({
+            status: paid ? 'successful' : 'failed',
+            completeMessage: paid
+              ? `Confirmed successful in the Flutterwave dashboard by ${ctx.session.user.name}`
+              : `Confirmed not sent (no such transfer in the Flutterwave dashboard) by ${ctx.session.user.name}`,
+            completedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(payoutTransfers.id, attempt.id))
+        const moved = await transitionPayout(tx, {
+          payoutId: row.id,
+          from: ['processing'],
+          to: paid ? 'paid' : 'failed',
+          actor: adminActor(ctx.session),
+          set: paid
+            ? { method: 'transfer', paidAt: now, failureReason: '' }
+            : {
+                failureReason:
+                  'The transfer never reached Flutterwave (confirmed by an admin).',
+              },
+          note: paid
+            ? `Confirmed paid from the Flutterwave dashboard (${attempt.reference})`
+            : `Confirmed not sent (${attempt.reference})`,
+          now,
+        })
+        if (!moved.ok) {
+          throw moved.reason === 'wrong_status'
+            ? wrongStatus(moved.status)
+            : new TRPCError({ code: 'NOT_FOUND', message: 'Payout not found' })
+        }
+        return { payout: moved.payout, paid, reference: attempt.reference }
+      })
+      if (result.paid) {
+        await sendPayoutUpdateEmail('paid', result.payout, {
+          reference: result.reference,
+        })
+      }
+      return { ok: true as const }
+    }),
 
   /** Turn a request down. The amount goes back on the organizer's balance. */
   reject: adminProcedure

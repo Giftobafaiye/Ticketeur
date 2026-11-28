@@ -56,7 +56,8 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
 }) as typeof fetch
 void realFetch
 
-const { db, user, events, orders, payouts, payoutAccounts } = await import('@ticketur/db')
+const { db, user, events, orders, payouts, payoutAccounts, payoutTransfers } =
+  await import('@ticketur/db')
 const { eq } = await import('drizzle-orm')
 const { appRouter } = await import('./routers/_app')
 const { createCallerFactory } = await import('./trpc')
@@ -144,8 +145,8 @@ try {
       assert.equal(o1.summary.heldMinor, 7_760_000)
       assert.equal(o1.events.length, 2)
     })
-    await check('requests are open in manual mode for an organizer', () => {
-      assert.equal(o1.mode, 'manual')
+    await check('requests are open for an organizer (manual or live mode)', () => {
+      assert.ok(o1.mode === 'manual' || o1.mode === 'live')
       assert.equal(o1.canRequest, true)
       assert.equal(o1.account, null)
     })
@@ -460,6 +461,95 @@ try {
       assert.ok(ids.includes(fourth.id))
       assert.ok(!ids.includes(first.id), 'paid is not in the queue')
     })
+
+    // ─── Phase 3: live-mode actions (run the script with PAYOUTS_MODE=live) ──
+    if (process.env.PAYOUTS_MODE === 'live') {
+      console.log('live mode: retry and unconfirmed transfers')
+      await asAdmin.admin.payouts.reject({ id: fourth.id, reason: 'clearing for the next checks' })
+      // Undo the chargeback so the balance covers again.
+      await asAdmin.admin.payouts.addAdjustment({
+        organizerId: org.id,
+        kind: 'correction',
+        direction: 'credit',
+        amountMinor: 12_000_000,
+        reason: 'Chargeback reversed',
+      })
+      const snapshot = {
+        organizerId: org.id,
+        organizerName: 'IT Organizer',
+        organizerEmail: org.email,
+        bankCode: '044',
+        bankName: 'Access Bank',
+        accountNumber: '0690000031',
+        accountName: 'IT ORGANIZER ACCOUNT',
+      }
+
+      const failedId = id('pyt')
+      await tx.insert(payouts).values({ id: failedId, amountMinor: 1_000_000, status: 'failed', ...snapshot })
+      await asAdmin.admin.payouts.retry({ id: failedId })
+      await check('retry moves a failed payout back to approved, for the worker to send', async () => {
+        const v = await asAdmin.admin.payouts.byId({ id: failedId })
+        assert.equal(v.payout.status, 'approved')
+      })
+      await asAdmin.admin.payouts.reject({ id: failedId, reason: 'clearing' })
+
+      const inFlight = id('pyt')
+      const reference = `TKTP-${run}unconfirmed-1`
+      await tx.insert(payouts).values({ id: inFlight, amountMinor: 1_000_000, status: 'processing', ...snapshot })
+      await tx.insert(payoutTransfers).values({
+        id: id('pytr'),
+        payoutId: inFlight,
+        attempt: 1,
+        reference,
+        status: 'unconfirmed',
+        amountMinor: 1_000_000,
+      })
+      const v1 = await asAdmin.admin.payouts.byId({ id: inFlight })
+      await check('an unconfirmed transfer offers "resolve", never retry or mark paid', () => {
+        assert.equal(v1.actions.canResolveUnconfirmed, true)
+        assert.equal(v1.actions.canRetry, false)
+        assert.equal(v1.actions.canMarkPaid, false)
+        assert.equal(v1.actions.canReject, false)
+      })
+      await check('resolving needs the reference typed back exactly', () =>
+        rejects(
+          () =>
+            asAdmin.admin.payouts.resolveUnconfirmed({
+              id: inFlight,
+              outcome: 'not_sent',
+              reference: 'TKTP-something-else',
+            }),
+          'BAD_REQUEST'
+        )
+      )
+      await asAdmin.admin.payouts.resolveUnconfirmed({ id: inFlight, outcome: 'not_sent', reference })
+      await check('"not sent" fails it, and only then can it be retried', async () => {
+        const v = await asAdmin.admin.payouts.byId({ id: inFlight })
+        assert.equal(v.payout.status, 'failed')
+        assert.equal(v.transfers[0]?.status, 'failed')
+        assert.equal(v.actions.canRetry, true)
+      })
+      await asAdmin.admin.payouts.reject({ id: inFlight, reason: 'clearing' })
+
+      const inFlight2 = id('pyt')
+      const reference2 = `TKTP-${run}unconfirmed-2`
+      await tx.insert(payouts).values({ id: inFlight2, amountMinor: 1_000_000, status: 'processing', ...snapshot })
+      await tx.insert(payoutTransfers).values({
+        id: id('pytr'),
+        payoutId: inFlight2,
+        attempt: 1,
+        reference: reference2,
+        status: 'unconfirmed',
+        amountMinor: 1_000_000,
+      })
+      await asAdmin.admin.payouts.resolveUnconfirmed({ id: inFlight2, outcome: 'paid', reference: reference2 })
+      await check('"paid" settles it as a transfer', async () => {
+        const v = await asAdmin.admin.payouts.byId({ id: inFlight2 })
+        assert.equal(v.payout.status, 'paid')
+        assert.equal(v.payout.method, 'transfer')
+        assert.equal(v.transfers[0]?.status, 'successful')
+      })
+    }
 
     throw new Rollback()
   })
