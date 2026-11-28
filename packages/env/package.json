@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@ticketur/typescript-config": "workspace:*",
-    "@types/node": "^26.6.6",
+    "@types/node": "^26.6.11",
     "typescript": "^6.0.3"
   }
 }
