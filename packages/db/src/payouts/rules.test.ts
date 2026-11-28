@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
 import { MIN_PAYOUT_MINOR, PAYOUT_HOLD_DAYS } from './constants'
-import { formatNaira, maskAccountNumber } from './format'
+import { formatNaira, maskAccountNumber, nameMatch } from './format'
 import {
   isPayoutReference,
   transferReference,
@@ -238,6 +238,16 @@ describe('references and display', () => {
     assert.equal(isPayoutReference('TKTP-SPIKE-xyz-1_PMCKDU_1'), false)
     assert.equal(isPayoutReference('manual-dashboard-transfer'), false)
     assert.equal(isPayoutReference(42), false)
+  })
+
+  test('name match is a hint: match, partial, none', () => {
+    assert.equal(nameMatch('OBAFAIYE GIFT ADEBAYO', ['Gift Obafaiye']), 'match')
+    assert.equal(nameMatch('VOICES STAGE LTD', [null, 'Voices Stage']), 'match')
+    assert.equal(nameMatch('ADA OBI', ['Ada']), 'match')
+    assert.equal(nameMatch('ADA NWOSU', ['Ada Obi']), 'partial')
+    assert.equal(nameMatch('JOHN DOE', ['Ada Obi', 'Luminaura Fashion']), 'none')
+    // Corporate noise words do not count as a resemblance.
+    assert.equal(nameMatch('XYZ VENTURES LTD', ['ABC Ventures Ltd']), 'none')
   })
 
   test('masking and naira formatting', () => {
