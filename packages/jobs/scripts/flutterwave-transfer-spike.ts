@@ -58,18 +58,27 @@ function note(fact: string, ok: boolean, detail: string) {
   findings.push({ fact, ok, detail })
 }
 
+// A call that gets no answer is a finding, not a crash: it comes back as
+// status 0 with the error as its message, and the steps carry on. `ms` shows
+// how long Flutterwave took, since a slow endpoint is a finding too.
 async function raw(path: string, init?: { method?: string; body?: unknown }) {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: init?.method ?? 'GET',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
-    body: init?.body === undefined ? undefined : JSON.stringify(init.body),
-    signal: AbortSignal.timeout(20_000),
-  })
-  const json = (await res.json().catch(() => null)) as Record<string, unknown> | null
-  return { status: res.status, json }
+  const started = Date.now()
+  try {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: init?.method ?? 'GET',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: init?.body === undefined ? undefined : JSON.stringify(init.body),
+      signal: AbortSignal.timeout(60_000),
+    })
+    const json = (await res.json().catch(() => null)) as Record<string, unknown> | null
+    return { status: res.status, json, ms: Date.now() - started }
+  } catch (err) {
+    const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+    return { status: 0, json: { message } as Record<string, unknown>, ms: Date.now() - started }
+  }
 }
 
 function show(step: string, value: unknown) {
