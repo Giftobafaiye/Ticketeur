@@ -85,6 +85,24 @@ function statusFilter(filter: (typeof LIST_FILTERS)[number]) {
   }
 }
 
+/** The queue's filter, shared by the list and the export so they agree. */
+function queueWhere(filter: (typeof LIST_FILTERS)[number], q: string) {
+  const filters = [statusFilter(filter)]
+  const needle = q.trim()
+  if (needle) {
+    const like = `%${needle}%`
+    filters.push(
+      or(
+        ilike(payouts.organizerName, like),
+        ilike(payouts.organizerEmail, like),
+        ilike(payouts.accountName, like),
+        ilike(payouts.accountNumber, like)
+      )
+    )
+  }
+  return and(...filters)
+}
+
 function adminActor(session: { user: { id: string; name: string } }): PayoutActor {
   return { type: 'admin', id: session.user.id, name: session.user.name }
 }
@@ -126,6 +144,65 @@ function wrongStatus(status: PayoutStatus): TRPCError {
 }
 
 export const adminPayoutsRouter = createTRPCRouter({
+  /**
+   * Every payout matching a filter, for the accounting export (CSV, built in
+   * the browser). Oldest first, with the reference that proves each payment:
+   * the one typed for a payment by hand, or the successful transfer's.
+   */
+  exportRows: adminProcedure
+    .input(
+      z.object({
+        status: z.enum(LIST_FILTERS).default('all'),
+        q: z.string().default(''),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select()
+        .from(payouts)
+        .where(queueWhere(input.status, input.q))
+        .orderBy(asc(payouts.requestedAt))
+        .limit(5000)
+      const ids = rows.map((r) => r.id)
+      const transfers = ids.length
+        ? await ctx.db
+            .select({
+              payoutId: payoutTransfers.payoutId,
+              reference: payoutTransfers.reference,
+              status: payoutTransfers.status,
+              flwTransferId: payoutTransfers.flwTransferId,
+              feeMinor: payoutTransfers.feeMinor,
+            })
+            .from(payoutTransfers)
+            .where(inArray(payoutTransfers.payoutId, ids))
+        : []
+      const successful = new Map(
+        transfers
+          .filter((t) => t.status === 'successful')
+          .map((t) => [t.payoutId, t])
+      )
+      return rows.map((p) => {
+        const t = successful.get(p.id)
+        return {
+          id: p.id,
+          requestedAt: p.requestedAt,
+          organizerName: p.organizerName,
+          organizerEmail: p.organizerEmail,
+          amountMinor: p.amountMinor,
+          status: p.status,
+          method: p.method,
+          bankName: p.bankName,
+          accountNumber: p.accountNumber,
+          accountName: p.accountName,
+          reviewedByName: p.reviewedByName,
+          paidAt: p.paidAt,
+          reference: p.manualReference || t?.reference || '',
+          flwTransferId: t?.flwTransferId ?? '',
+          transferFeeMinor: t?.feeMinor ?? null,
+        }
+      })
+    }),
+
   /** The withdrawal queue. "Needs action" is oldest first: first come, first paid. */
   list: adminProcedure
     .input(
@@ -137,20 +214,7 @@ export const adminPayoutsRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      const filters = [statusFilter(input.status)]
-      const q = input.q.trim()
-      if (q) {
-        const needle = `%${q}%`
-        filters.push(
-          or(
-            ilike(payouts.organizerName, needle),
-            ilike(payouts.organizerEmail, needle),
-            ilike(payouts.accountName, needle),
-            ilike(payouts.accountNumber, needle)
-          )
-        )
-      }
-      const where = and(...filters)
+      const where = queueWhere(input.status, input.q)
       const order =
         input.status === 'needs_action'
           ? asc(payouts.requestedAt)

@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import {
   parseAsInteger,
   parseAsString,
@@ -20,6 +22,7 @@ import { formatNaira } from '@ticketur/db/payouts/format'
 import { useTRPC } from '@/lib/trpc'
 import { formatShortDate } from '@/lib/date'
 import { PayoutStatusBadge } from '@/components/dashboard/payouts/status'
+import { downloadCsv, payoutsCsv } from '@/components/dashboard/payouts/export-csv'
 
 const FILTERS = [
   'needs_action',
@@ -68,6 +71,30 @@ export function PayoutQueue() {
   const total = data?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
+  // The export follows whatever the filter and search show.
+  const queryClient = useQueryClient()
+  const [exporting, setExporting] = useState(false)
+  async function exportCsv() {
+    setExporting(true)
+    try {
+      const all = await queryClient.fetchQuery(
+        trpc.admin.payouts.exportRows.queryOptions({
+          status: params.status,
+          q: params.q,
+        })
+      )
+      const stamp = new Date().toISOString().slice(0, 10)
+      downloadCsv(`ticketeur-payouts-${params.status}-${stamp}.csv`, payoutsCsv(all))
+      toast.success(`Exported ${all.length} ${all.length === 1 ? 'payout' : 'payouts'}`)
+    } catch (err) {
+      toast.error('Could not export', {
+        description: err instanceof Error ? err.message : undefined,
+      })
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
@@ -92,6 +119,14 @@ export function PayoutQueue() {
           onChange={(e) => void setParams({ q: e.target.value, page: 1 })}
           placeholder="Search organizer, account name or number"
         />
+        <Button
+          variant="outline"
+          className="shrink-0"
+          disabled={exporting}
+          onClick={() => void exportCsv()}
+        >
+          {exporting ? 'Exporting…' : 'Export CSV'}
+        </Button>
       </div>
 
       <div className="border-border/60 bg-background overflow-hidden rounded-2xl border">

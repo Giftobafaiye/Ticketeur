@@ -145,6 +145,10 @@ try {
       assert.equal(o1.summary.heldMinor, 7_760_000)
       assert.equal(o1.events.length, 2)
     })
+    const dash = await asOrg.org.dashboard.stats()
+    await check('the dashboard earnings figure is the same number as Payouts', () => {
+      assert.equal(dash.revenueMinor, o1.summary.earnedMinor)
+    })
     await check('requests are open for an organizer (manual or live mode)', () => {
       assert.ok(o1.mode === 'manual' || o1.mode === 'live')
       assert.equal(o1.canRequest, true)
@@ -454,6 +458,14 @@ try {
     await check('an admin cannot approve their own withdrawal', () =>
       rejects(() => asAdmin.admin.payouts.approve({ id: selfPayout }), 'FORBIDDEN')
     )
+
+    const exported = await asAdmin.admin.payouts.exportRows({ status: 'all' })
+    await check('the export carries every payout with the proof of payment', () => {
+      const row = exported.find((r) => r.id === first.id)
+      assert.equal(row?.reference, 'FLW-DASH-123')
+      assert.equal(row?.method, 'manual')
+      assert.ok(exported.some((r) => r.id === second.id && r.status === 'rejected'))
+    })
 
     const queue = await asAdmin.admin.payouts.list({ status: 'needs_action' })
     await check('the queue lists what needs a person, oldest first', () => {

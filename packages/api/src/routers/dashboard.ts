@@ -1,6 +1,7 @@
 import { and, desc, eq, sql } from 'drizzle-orm'
 
 import { activityLog, events, ticketTiers } from '@ticketur/db'
+import { loadEventEarnings } from '@ticketur/db/payouts'
 
 import { createTRPCRouter, organizerProcedure } from '../trpc'
 
@@ -19,20 +20,27 @@ export const dashboardRouter = createTRPCRouter({
     const ticketTotals = await ctx.db
       .select({
         sold: sql<number>`COALESCE(SUM(${ticketTiers.sold}), 0)::int`,
-        revenueMinor: sql<number>`COALESCE(SUM(${ticketTiers.sold} * ${ticketTiers.priceMinor}), 0)::bigint`,
       })
       .from(ticketTiers)
       .innerJoin(events, eq(events.id, ticketTiers.eventId))
       .where(eq(events.organizerId, organizerId))
 
+    // What the organizer has EARNED, computed exactly as the Payouts page
+    // computes it (packages/db/src/payouts/balance.ts): the share of every
+    // paid order — tickets after discount, registration fees, paid votes —
+    // less anything owed back to a buyer. It used to be tickets sold × list
+    // price, which ignored discounts and every non-ticket sale, so the
+    // dashboard and the withdrawable balance disagreed.
+    const earnings = await loadEventEarnings(ctx.db, organizerId)
+
     const counts = eventCounts[0] ?? { total: 0, published: 0 }
-    const tickets = ticketTotals[0] ?? { sold: 0, revenueMinor: 0n }
+    const tickets = ticketTotals[0] ?? { sold: 0 }
 
     return {
       totalEvents: counts.total,
       publishedEvents: counts.published,
       ticketsSold: tickets.sold,
-      revenueMinor: Number(tickets.revenueMinor),
+      revenueMinor: earnings.reduce((sum, e) => sum + e.earnedMinor, 0),
     }
   }),
 
